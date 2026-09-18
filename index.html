@@ -1,9 +1,11 @@
-l<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
 <meta name="theme-color" content="#0a1408">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <title>ECTO OS // PKE METRE</title>
 <link rel="manifest" id="manifest">
 <style>
@@ -22,11 +24,12 @@ l<!DOCTYPE html>
     color:var(--green);
     font-family:'Courier New',monospace;
     display:flex; align-items:center; justify-content:center;
-    padding:12px;
-    min-height:100%;
+    padding:8px;
+    min-height:100dvh;
+    overscroll-behavior:none;
   }
   .terminal{
-    width:100%; max-width:760px;
+    width:100%; max-width:480px;
     background:var(--panel);
     border:2px solid var(--border);
     border-radius:8px;
@@ -35,23 +38,22 @@ l<!DOCTYPE html>
   }
   .topbar{
     display:flex; justify-content:space-between; align-items:center;
-    padding:8px 12px;
+    padding:6px 10px;
     border-bottom:1px solid var(--border);
     background:rgba(0,0,0,.3);
-    font-size:12px; letter-spacing:1px;
-  }
-  .topbar .title{font-weight:bold; text-shadow:0 0 8px currentColor;}
-  .topbar .status{color:var(--dim); font-size:11px;}
-  .topbar .status b{color:var(--green);}
-
-  .sysstrip{
-    display:flex; gap:8px; align-items:center;
-    padding:6px 12px;
-    border-bottom:1px solid var(--border);
     font-size:11px; letter-spacing:1px;
   }
+  .topbar .title{font-weight:bold; text-shadow:0 0 8px currentColor;}
+  .topbar .status{color:var(--dim); font-size:9px;}
+
+  .sysstrip{
+    display:flex; gap:6px; align-items:center;
+    padding:5px 10px;
+    border-bottom:1px solid var(--border);
+    font-size:10px; letter-spacing:1px;
+  }
   .sysstrip .tag{
-    border:1px solid var(--border); padding:2px 8px; border-radius:3px;
+    border:1px solid var(--border); padding:2px 6px; border-radius:3px;
     color:var(--dim); cursor:pointer;
     transition:all .15s;
     -webkit-tap-highlight-color:transparent;
@@ -59,14 +61,15 @@ l<!DOCTYPE html>
   .sysstrip .tag.on{ color:var(--green); border-color:var(--green); }
   .sysstrip .tag.btn:hover{ background:rgba(43,255,94,.08); }
   .sysstrip .tag.btn:active{ transform:scale(.95); }
+  .sysstrip .conn{ margin-left:auto; font-size:9px; color:var(--dim); }
+  .sysstrip .conn b{color:var(--green);}
 
   .screen{
     position:relative;
     background:var(--screen-bg);
     border-bottom:1px solid var(--border);
     overflow:hidden;
-    height:320px;
-    display:flex; flex-direction:column;
+    height:200px;
   }
   .screen::after{
     content:""; position:absolute; inset:0;
@@ -100,36 +103,36 @@ l<!DOCTYPE html>
   .screenlabels{
     position:absolute; top:0; left:0; right:0;
     display:flex; justify-content:space-between;
-    padding:6px 10px;
-    font-size:10px; letter-spacing:1px; color:var(--dim);
+    padding:5px 8px;
+    font-size:9px; letter-spacing:1px; color:var(--dim);
     z-index:6;
   }
 
   .readout{
     position:absolute; bottom:0; left:0; right:0;
     display:flex; justify-content:space-between; align-items:center;
-    padding:8px 12px;
+    padding:6px 10px;
     background:rgba(4,8,5,.9);
     border-top:1px solid rgba(43,255,94,.2);
     z-index:6;
   }
-  .readout .label{font-size:10px; letter-spacing:1px; color:var(--dim);}
-  #pkeVal{ font-size:30px; font-weight:bold; letter-spacing:2px; text-shadow:0 0 8px currentColor; }
-  .status{font-size:11px; letter-spacing:1px;}
+  .readout .label{font-size:9px; letter-spacing:1px; color:var(--dim);}
+  #pkeVal{ font-size:26px; font-weight:bold; letter-spacing:2px; text-shadow:0 0 8px currentColor; }
+  .status{font-size:10px; letter-spacing:1px;}
 
-  .controls{ padding:12px; }
+  .controls{ padding:10px; }
   .sectionlabel{
-    font-size:10px; letter-spacing:2px; color:var(--dim);
-    margin-bottom:8px; border-bottom:1px solid var(--border); padding-bottom:4px;
+    font-size:9px; letter-spacing:2px; color:var(--dim);
+    margin-bottom:6px; border-bottom:1px solid var(--border); padding-bottom:3px;
   }
-  .mode-row{ display:grid; grid-template-columns:repeat(4,1fr); gap:8px; margin-bottom:10px; }
+  .mode-row{ display:grid; grid-template-columns:repeat(4,1fr); gap:6px; margin-bottom:8px; }
   .btn{
     background:var(--btn);
     color:var(--green);
     border:1px solid var(--border);
     border-radius:4px;
-    padding:11px 0;
-    font-family:inherit; font-size:14px; font-weight:bold;
+    padding:9px 0;
+    font-family:inherit; font-size:13px; font-weight:bold;
     letter-spacing:1px; cursor:pointer;
     text-shadow:0 0 6px currentColor;
     transition:all .15s;
@@ -140,17 +143,17 @@ l<!DOCTYPE html>
     background:var(--green); color:#041005; border-color:var(--green);
     text-shadow:none; box-shadow:0 0 16px rgba(43,255,94,.5);
   }
-  .scan-row{ display:grid; grid-template-columns:1fr 1fr; gap:8px; }
-  .scan-btn{ font-size:30px; line-height:1; padding:12px 0; }
+  .scan-row{ display:grid; grid-template-columns:1fr 1fr; gap:6px; }
+  .scan-btn{ font-size:26px; line-height:1; padding:10px 0; }
   .gain{
-    text-align:center; margin-top:8px;
-    font-size:11px; letter-spacing:1px; color:var(--dim);
+    text-align:center; margin-top:6px;
+    font-size:10px; letter-spacing:1px; color:var(--dim);
   }
   .gain b{color:var(--green);}
   .footer{
     border-top:1px solid var(--border);
-    padding:6px 12px;
-    font-size:10px; letter-spacing:1px; color:var(--dim);
+    padding:5px 10px;
+    font-size:9px; letter-spacing:1px; color:var(--dim);
     display:flex; justify-content:space-between;
   }
   .footer .cursor{ animation:blink 1s steps(1) infinite; color:var(--green); }
@@ -167,8 +170,7 @@ l<!DOCTYPE html>
     <span class="tag on" id="sysReadyTag">SYSTEM READY</span>
     <span class="tag btn" id="settingsTag">SETTINGS</span>
     <span class="tag btn" id="deactivateTag">DEACTIVATE</span>
-    <span style="flex:1"></span>
-    <span>PKE METRE <b style="color:var(--green)">[CONNECTED]</b></span>
+    <span class="conn">PKE METRE <b>[CONNECTED]</b></span>
   </div>
 
   <div class="screen" id="screen">
@@ -202,204 +204,245 @@ l<!DOCTYPE html>
     <div class="sectionlabel">MANUAL SCAN CONTROL</div>
     <div class="scan-row">
       <button class="btn scan-btn" id="plusBtn">+</button>
-      <button class="btn scan-btn" id="minusBtn">−</button>
+      <button class="btn scan-btn" id="minusBtn">-</button>
     </div>
     <div class="gain">SCAN SENSITIVITY <b id="gainVal">100%</b></div>
   </div>
 
   <div class="footer">
     <span>ECTO FIELD SYSTEM // LIVE STATUS</span>
-    <span id="footerMsg">SYSTEM READY // AWAITING INPUT<span class="cursor">▌</span></span>
+    <span id="footerMsg">SYSTEM READY // AWAITING INPUT<span class="cursor">|</span></span>
   </div>
 </div>
 
 <script>
 (function(){
-  const canvas = document.getElementById('wave');
-  const ctx = canvas.getContext('2d');
-  const pkeVal = document.getElementById('pkeVal');
-  const statusEl = document.getElementById('status');
-  const gainVal = document.getElementById('gainVal');
-  const dispMode = document.getElementById('dispMode');
-  const footerMsg = document.getElementById('footerMsg');
-  const sysReadyTag = document.getElementById('sysReadyTag');
-  const deactivateTag = document.getElementById('deactivateTag');
-  const settingsTag = document.getElementById('settingsTag');
+  var canvas = document.getElementById('wave');
+  var ctx = canvas.getContext('2d');
+  var pkeVal = document.getElementById('pkeVal');
+  var statusEl = document.getElementById('status');
+  var gainVal = document.getElementById('gainVal');
+  var dispMode = document.getElementById('dispMode');
+  var footerMsg = document.getElementById('footerMsg');
+  var sysReadyTag = document.getElementById('sysReadyTag');
+  var deactivateTag = document.getElementById('deactivateTag');
+  var settingsTag = document.getElementById('settingsTag');
 
-  let mode='AUTO', display='WAVE', gain=1.0;
-  let strength=0.3, heldStrength=0.3, time=0;
-  let offline=false;
+  var mode = 'AUTO', display = 'WAVE', gain = 1.0;
+  var strength = 0.3, heldStrength = 0.3, time = 0;
+  var offline = false;
 
-  /* ---- AUDIO (Web Audio, no MP3s) ---- */
-  let actx=null;
+  /* AUDIO */
+  var actx = null;
   function ensureAudio(){
     if(!actx){
-      actx=new (window.AudioContext||window.webkitAudioContext)();
+      actx = new (window.AudioContext || window.webkitAudioContext)();
     }
-    if(actx.state==='suspended') actx.resume();
+    if(actx.state === 'suspended') actx.resume();
     return actx;
   }
   function blip(freq, dur, vol){
     if(offline) return;
-    const a=ensureAudio(); if(!a) return;
-    const o=a.createOscillator(), g=a.createGain();
-    o.type='square'; o.frequency.value=freq;
-    g.gain.setValueAtTime(0.0001,a.currentTime);
-    g.gain.exponentialRampToValueAtTime(vol,a.currentTime+0.01);
-    g.gain.exponentialRampToValueAtTime(0.0001,a.currentTime+dur);
+    var a = ensureAudio(); if(!a) return;
+    var o = a.createOscillator(), g = a.createGain();
+    o.type = 'square'; o.frequency.value = freq;
+    g.gain.setValueAtTime(0.0001, a.currentTime);
+    g.gain.exponentialRampToValueAtTime(vol, a.currentTime + 0.01);
+    g.gain.exponentialRampToValueAtTime(0.0001, a.currentTime + dur);
     o.connect(g).connect(a.destination);
-    o.start(); o.stop(a.currentTime+dur+0.02);
+    o.start(); o.stop(a.currentTime + dur + 0.02);
   }
   function scanSweep(){
     if(offline) return;
-    const a=ensureAudio(); if(!a) return;
-    const t=a.currentTime, dur=0.5;
-    const o=a.createOscillator(), g=a.createGain();
-    o.type='sawtooth';
-    o.frequency.setValueAtTime(220,t);
-    o.frequency.exponentialRampToValueAtTime(220+strength*600,t+dur);
-    g.gain.setValueAtTime(0.0001,t);
-    g.gain.exponentialRampToValueAtTime(0.03,t+0.02);
-    g.gain.exponentialRampToValueAtTime(0.0001,t+dur);
+    var a = ensureAudio(); if(!a) return;
+    var t = a.currentTime, dur = 0.5;
+    var o = a.createOscillator(), g = a.createGain();
+    o.type = 'sawtooth';
+    o.frequency.setValueAtTime(220, t);
+    o.frequency.exponentialRampToValueAtTime(220 + strength * 600, t + dur);
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(0.03, t + 0.02);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
     o.connect(g).connect(a.destination);
-    o.start(t); o.stop(t+dur+0.02);
+    o.start(t); o.stop(t + dur + 0.02);
   }
   function deactivateSound(){
-    const a=ensureAudio(); if(!a) return;
-    const t=a.currentTime;
-    [660,520,390,260,130].forEach((f,i)=>{
-      const o=a.createOscillator(), g=a.createGain();
-      o.type='square'; o.frequency.value=f;
-      g.gain.setValueAtTime(0.04,t+i*0.12);
-      g.gain.exponentialRampToValueAtTime(0.0001,t+i*0.12+0.1);
+    var a = ensureAudio(); if(!a) return;
+    var t = a.currentTime;
+    var freqs = [660, 520, 390, 260, 130];
+    for(var i = 0; i < freqs.length; i++){
+      var o = a.createOscillator(), g = a.createGain();
+      o.type = 'square'; o.frequency.value = freqs[i];
+      g.gain.setValueAtTime(0.04, t + i * 0.12);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + i * 0.12 + 0.1);
       o.connect(g).connect(a.destination);
-      o.start(t+i*0.12); o.stop(t+i*0.12+0.15);
-    });
-  }
-
-  /* ---- color ramp ---- */
-  function colorFor(s){
-    const stops=[
-      [0.0, 43,255,94],[0.4,170,255,60],[0.6,255,220,60],[0.8,255,130,40],[1.0,255,40,40]
-    ];
-    let c=stops[0];
-    for(let i=0;i<stops.length-1;i++){
-      const a=stops[i],b=stops[i+1];
-      if(s>=a[0]&&s<=b[0]){const t=(s-a[0])/(b[0]-a[0]||1);c=[0,a[1]+(b[1]-a[1])*t,a[2]+(b[2]-a[2])*t,a[3]+(b[3]-a[3])*t];break;}
+      o.start(t + i * 0.12); o.stop(t + i * 0.12 + 0.15);
     }
-    return `rgb(${c[1]|0},${c[2]|0},${c[3]|0})`;
   }
 
-  function resize(){const r=canvas.parentElement.getBoundingClientRect();canvas.width=r.width;canvas.height=r.height;}
-  window.addEventListener('resize',resize); resize();
+  /* COLOR RAMP */
+  function colorFor(s){
+    var stops = [
+      [0.0, 43, 255, 94],
+      [0.4, 170, 255, 60],
+      [0.6, 255, 220, 60],
+      [0.8, 255, 130, 40],
+      [1.0, 255, 40, 40]
+    ];
+    var c = stops[0];
+    for(var i = 0; i < stops.length - 1; i++){
+      var a = stops[i], b = stops[i + 1];
+      if(s >= a[0] && s <= b[0]){
+        var t = (s - a[0]) / (b[0] - a[0] || 1);
+        c = [0, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t, a[3] + (b[3] - a[3]) * t];
+        break;
+      }
+    }
+    return 'rgb(' + (c[1] | 0) + ',' + (c[2] | 0) + ',' + (c[3] | 0) + ')';
+  }
+
+  function resize(){
+    var r = canvas.parentElement.getBoundingClientRect();
+    canvas.width = r.width;
+    canvas.height = r.height;
+  }
+  window.addEventListener('resize', resize);
+  resize();
 
   function updateAuto(){
     if(offline) return;
-    strength=Math.min(1,Math.max(0.05,strength+(Math.random()-0.5)*0.06));
-    if(Math.random()<0.03) strength=Math.min(1,strength+0.2+Math.random()*0.4);
-    strength=Math.max(0.05,strength-0.004)*gain;
-    strength=Math.min(1,strength);
+    strength = Math.min(1, Math.max(0.05, strength + (Math.random() - 0.5) * 0.06));
+    if(Math.random() < 0.03) strength = Math.min(1, strength + 0.2 + Math.random() * 0.4);
+    strength = Math.max(0.05, strength - 0.004) * gain;
+    strength = Math.min(1, strength);
   }
 
   function draw(){
-    const w=canvas.width,h=canvas.height;
-    ctx.clearRect(0,0,w,h);
+    var w = canvas.width, h = canvas.height;
+    ctx.clearRect(0, 0, w, h);
     if(offline) return;
-    const s=mode==='HOLD'?heldStrength:strength;
-    const col=colorFor(s);
+    var s = mode === 'HOLD' ? heldStrength : strength;
+    var col = colorFor(s);
 
-    if(display==='WAVE'){
+    if(display === 'WAVE'){
       ctx.beginPath();
-      const amp=(h*0.32)*(0.3+s*0.9), mid=h*0.5;
-      for(let x=0;x<=w;x+=2){
-        const t=x/w;
-        const y=mid+Math.sin(t*Math.PI*2*3+time)*amp*0.6+Math.sin(t*Math.PI*2*7+time*1.7)*amp*0.3+Math.sin(t*Math.PI*2*13+time*2.3)*amp*0.1;
-        x===0?ctx.moveTo(x,y):ctx.lineTo(x,y);
+      var amp = (h * 0.32) * (0.3 + s * 0.9), mid = h * 0.5;
+      for(var x = 0; x <= w; x += 2){
+        var t = x / w;
+        var y = mid
+          + Math.sin(t * Math.PI * 2 * 3 + time) * amp * 0.6
+          + Math.sin(t * Math.PI * 2 * 7 + time * 1.7) * amp * 0.3
+          + Math.sin(t * Math.PI * 2 * 13 + time * 2.3) * amp * 0.1;
+        if(x === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
       }
-      ctx.strokeStyle=col; ctx.lineWidth=2.5;
-      ctx.shadowColor=col; ctx.shadowBlur=12; ctx.stroke(); ctx.shadowBlur=0;
+      ctx.strokeStyle = col; ctx.lineWidth = 2.5;
+      ctx.shadowColor = col; ctx.shadowBlur = 12;
+      ctx.stroke(); ctx.shadowBlur = 0;
     } else {
-      const bars=24, bw=w/bars, base=h*0.88;
-      for(let i=0;i<bars;i++){
-        const t=i/bars;
-        const bh=(h*0.82)*Math.abs(Math.sin(t*Math.PI*2*3+time)*0.6+Math.sin(t*Math.PI*2*7+time*1.7)*0.3+Math.sin(t*Math.PI*2*13+time*2.3)*0.1);
-        const bh2=bh*(0.3+s*0.9);
-        ctx.fillStyle=colorFor(s*(0.5+Math.abs(Math.sin(t*Math.PI+time))*0.5));
-        ctx.fillRect(i*bw+2,base-bh2,bw-4,bh2);
+      var bars = 24, bw = w / bars, base = h * 0.88;
+      for(var i = 0; i < bars; i++){
+        var t = i / bars;
+        var bh = (h * 0.82) * Math.abs(
+          Math.sin(t * Math.PI * 2 * 3 + time) * 0.6
+          + Math.sin(t * Math.PI * 2 * 7 + time * 1.7) * 0.3
+          + Math.sin(t * Math.PI * 2 * 13 + time * 2.3) * 0.1
+        );
+        var bh2 = bh * (0.3 + s * 0.9);
+        ctx.fillStyle = colorFor(s * (0.5 + Math.abs(Math.sin(t * Math.PI + time)) * 0.5));
+        ctx.fillRect(i * bw + 2, base - bh2, bw - 4, bh2);
       }
     }
 
-    const val=s*9.99;
-    pkeVal.textContent=val.toFixed(2);
-    pkeVal.style.color=col; pkeVal.style.textShadow=`0 0 10px ${col}`;
+    var val = s * 9.99;
+    pkeVal.textContent = val.toFixed(2);
+    pkeVal.style.color = col;
+    pkeVal.style.textShadow = '0 0 10px ' + col;
   }
 
-  function loop(){ time+=0.05; if(mode==='AUTO')updateAuto(); draw(); requestAnimationFrame(loop); }
+  function loop(){
+    time += 0.05;
+    if(mode === 'AUTO') updateAuto();
+    draw();
+    requestAnimationFrame(loop);
+  }
 
-  const setActive=(btn,group)=>{group.forEach(b=>b.classList.remove('active'));btn.classList.add('active');};
-  const autoBtn=document.getElementById('autoBtn'),holdBtn=document.getElementById('holdBtn'),
-        waveBtn=document.getElementById('waveBtn'),graphBtn=document.getElementById('graphBtn'),
-        plusBtn=document.getElementById('plusBtn'),minusBtn=document.getElementById('minusBtn');
+  function setActive(btn, group){
+    for(var i = 0; i < group.length; i++) group[i].classList.remove('active');
+    btn.classList.add('active');
+  }
 
-  autoBtn.onclick=()=>{ if(offline)return; mode='AUTO';setActive(autoBtn,[autoBtn,holdBtn]);statusEl.textContent='AUTO';blip(700,0.05,0.04); };
-  holdBtn.onclick=()=>{ if(offline)return; heldStrength=strength;mode='HOLD';setActive(holdBtn,[autoBtn,holdBtn]);statusEl.textContent='HOLD';blip(700,0.05,0.04); };
-  waveBtn.onclick=()=>{ if(offline)return; display='WAVE';setActive(waveBtn,[waveBtn,graphBtn]);dispMode.textContent='WAVEFORM';blip(880,0.04,0.03); };
-  graphBtn.onclick=()=>{ if(offline)return; display='GRAPH';setActive(graphBtn,[waveBtn,graphBtn]);dispMode.textContent='BAR GRAPH';blip(880,0.04,0.03); };
+  var autoBtn = document.getElementById('autoBtn');
+  var holdBtn = document.getElementById('holdBtn');
+  var waveBtn = document.getElementById('waveBtn');
+  var graphBtn = document.getElementById('graphBtn');
+  var plusBtn = document.getElementById('plusBtn');
+  var minusBtn = document.getElementById('minusBtn');
 
-  plusBtn.onclick=()=>{ if(offline)return; gain=Math.min(2,gain+0.25);gainVal.textContent=Math.round(gain*100)+'%';scanSweep(); };
-  minusBtn.onclick=()=>{ if(offline)return; gain=Math.max(0.25,gain-0.25);gainVal.textContent=Math.round(gain*100)+'%';scanSweep(); };
+  autoBtn.onclick = function(){ if(offline) return; mode = 'AUTO'; setActive(autoBtn, [autoBtn, holdBtn]); statusEl.textContent = 'AUTO'; blip(700, 0.05, 0.04); };
+  holdBtn.onclick = function(){ if(offline) return; heldStrength = strength; mode = 'HOLD'; setActive(holdBtn, [autoBtn, holdBtn]); statusEl.textContent = 'HOLD'; blip(700, 0.05, 0.04); };
+  waveBtn.onclick = function(){ if(offline) return; display = 'WAVE'; setActive(waveBtn, [waveBtn, graphBtn]); dispMode.textContent = 'WAVEFORM'; blip(880, 0.04, 0.03); };
+  graphBtn.onclick = function(){ if(offline) return; display = 'GRAPH'; setActive(graphBtn, [waveBtn, graphBtn]); dispMode.textContent = 'BAR GRAPH'; blip(880, 0.04, 0.03); };
+
+  plusBtn.onclick = function(){ if(offline) return; gain = Math.min(2, gain + 0.25); gainVal.textContent = Math.round(gain * 100) + '%'; scanSweep(); };
+  minusBtn.onclick = function(){ if(offline) return; gain = Math.max(0.25, gain - 0.25); gainVal.textContent = Math.round(gain * 100) + '%'; scanSweep(); };
 
   function powerDown(){
     if(offline) return;
-    offline=true;
+    offline = true;
     deactivateSound();
     deactivateTag.classList.remove('on');
     deactivateTag.classList.add('btn');
     sysReadyTag.classList.remove('on');
-    sysReadyTag.style.opacity=0.4;
-    footerMsg.innerHTML='SYSTEM OFFLINE // REACTIVATE TO RESUME<span class="cursor">▌</span>';
-    statusEl.textContent='OFFLINE';
-    dispMode.textContent='—';
-    pkeVal.textContent='0.00';
-    pkeVal.style.color='var(--dim)';
-    pkeVal.style.textShadow='none';
-    settingsTag.style.opacity=0.4;
-    settingsTag.style.pointerEvents='none';
-    document.querySelectorAll('.btn').forEach(b=>b.disabled=true);
+    sysReadyTag.style.opacity = 0.4;
+    footerMsg.innerHTML = 'SYSTEM OFFLINE // REACTIVATE TO RESUME<span class="cursor">|</span>';
+    statusEl.textContent = 'OFFLINE';
+    dispMode.textContent = '-';
+    pkeVal.textContent = '0.00';
+    pkeVal.style.color = 'var(--dim)';
+    pkeVal.style.textShadow = 'none';
+    settingsTag.style.opacity = 0.4;
+    settingsTag.style.pointerEvents = 'none';
+    var btns = document.querySelectorAll('.btn');
+    for(var i = 0; i < btns.length; i++) btns[i].disabled = true;
   }
   function powerOn(){
-    offline=false;
+    offline = false;
     deactivateTag.classList.add('on');
     deactivateTag.classList.remove('btn');
     sysReadyTag.classList.add('on');
-    sysReadyTag.style.opacity=1;
-    settingsTag.style.opacity=1;
-    settingsTag.style.pointerEvents='auto';
-    document.querySelectorAll('.btn').forEach(b=>b.disabled=false);
-    footerMsg.innerHTML='SYSTEM READY // AWAITING INPUT<span class="cursor">▌</span>';
-    statusEl.textContent='AUTO';
-    dispMode.textContent='WAVEFORM';
-    blip(660,0.08,0.05);
+    sysReadyTag.style.opacity = 1;
+    settingsTag.style.opacity = 1;
+    settingsTag.style.pointerEvents = 'auto';
+    var btns = document.querySelectorAll('.btn');
+    for(var i = 0; i < btns.length; i++) btns[i].disabled = false;
+    footerMsg.innerHTML = 'SYSTEM READY // AWAITING INPUT<span class="cursor">|</span>';
+    statusEl.textContent = 'AUTO';
+    dispMode.textContent = 'WAVEFORM';
+    blip(660, 0.08, 0.05);
   }
-  deactivateTag.onclick=()=>{ offline?powerOn():powerDown(); };
+  deactivateTag.onclick = function(){ if(offline) powerOn(); else powerDown(); };
 
-  settingsTag.onclick=()=>{ if(offline)return; blip(990,0.04,0.03); };
+  settingsTag.onclick = function(){ if(offline) return; blip(990, 0.04, 0.03); };
 
-  document.addEventListener('click',()=>{ ensureAudio(); },{once:true});
+  document.addEventListener('click', function(){ ensureAudio(); }, { once: true });
 
-  const manifest={
-    name:"ECTO OS // PKE METRE", short_name:"PKE METRE",
-    start_url:".", display:"standalone",
-    background_color:"#040805", theme_color:"#0a1408",
-    icons:[{src:"data:image/svg+xml,"+encodeURIComponent(
-      `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect width="100" height="100" fill="#0a1408"/><text x="50" y="65" font-size="50" text-anchor="middle" fill="#2bff5e" font-family="monospace">P</text></svg>`
-    ),sizes:"any",type:"image/svg+xml",purpose:"any"}]
+  var manifest = {
+    name: 'ECTO OS // PKE METRE',
+    short_name: 'PKE METRE',
+    start_url: '.',
+    display: 'standalone',
+    background_color: '#040805',
+    theme_color: '#0a1408',
+    icons: [{ src: 'data:image/svg+xml,' + encodeURIComponent(
+      '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect width="100" height="100" fill="#0a1408"/><text x="50" y="65" font-size="50" text-anchor="middle" fill="#2bff5e" font-family="monospace">P</text></svg>'
+    ), sizes: 'any', type: 'image/svg+xml', purpose: 'any' }]
   };
-  document.getElementById('manifest').setAttribute('href','data:application/manifest+json,'+encodeURIComponent(JSON.stringify(manifest)));
+  document.getElementById('manifest').setAttribute('href',
+    'data:application/manifest+json,' + encodeURIComponent(JSON.stringify(manifest)));
 
   if('serviceWorker' in navigator){
-    const sw=`const CACHE='pke-v1';self.addEventListener('install',e=>{self.skipWaiting()});self.addEventListener('activate',e=>{e.waitUntil(clients.claim())});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;e.respondWith(caches.open(CACHE).then(c=>c.match(e.request)).then(r=>r||fetch(e.request)));});`;
-    navigator.serviceWorker.register(URL.createObjectURL(new Blob([sw],{type:'text/javascript'})));
+    var sw = "const CACHE='pke-v1';self.addEventListener('install',e=>{self.skipWaiting()});self.addEventListener('activate',e=>{e.waitUntil(clients.claim())});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;e.respondWith(caches.open(CACHE).then(c=>c.match(e.request)).then(r=>r||fetch(e.request)));});";
+    navigator.serviceWorker.register(URL.createObjectURL(new Blob([sw], { type: 'text/javascript' })));
   }
 
   loop();
