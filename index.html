@@ -24,18 +24,21 @@
     color:var(--green);
     font-family:'Courier New',monospace;
     display:flex; align-items:center; justify-content:center;
-    padding:8px;
+    padding:6px;
     min-height:100dvh;
     overscroll-behavior:none;
   }
   .terminal{
-    width:100%; max-width:480px;
+    width:100%; max-width:520px;
+    height:100dvh;
+    max-height:100dvh;
     background:var(--panel);
     border:2px solid var(--border);
     border-radius:8px;
     box-shadow:0 0 40px rgba(43,255,94,.12) inset;
     overflow:hidden;
     position:relative;
+    display:flex; flex-direction:column;
   }
   .topbar{
     display:flex; justify-content:space-between; align-items:center;
@@ -43,6 +46,7 @@
     border-bottom:1px solid var(--border);
     background:rgba(0,0,0,.3);
     font-size:11px; letter-spacing:1px;
+    flex-shrink:0;
   }
   .topbar .title{font-weight:bold; text-shadow:0 0 8px currentColor;}
   .topbar .status{color:var(--dim); font-size:9px;}
@@ -52,6 +56,7 @@
     padding:5px 10px;
     border-bottom:1px solid var(--border);
     font-size:10px; letter-spacing:1px;
+    flex-shrink:0;
   }
   .sysstrip .tag{
     border:1px solid var(--border); padding:2px 6px; border-radius:3px;
@@ -70,13 +75,14 @@
     background:var(--screen-bg);
     border-bottom:1px solid var(--border);
     overflow:hidden;
-    height:230px;
+    flex:1 1 auto;
+    min-height:180px;
     transition:opacity .3s;
   }
   .screen::after{
     content:""; position:absolute; inset:0;
     background:repeating-linear-gradient(to bottom,
-      rgba(43,255,94,.05) 0px, rgba(43,255,94,.05) 1px, transparent 1px, transparent 3px);
+      rgba(43,255,94,.05) 0px, rgba(43,,255,94,.05) 1px, transparent 1px, transparent 3px);
     pointer-events:none; z-index:5;
     opacity:var(--scanlines,1);
   }
@@ -120,10 +126,10 @@
     z-index:6;
   }
   .readout .label{font-size:9px; letter-spacing:1px; color:var(--dim);}
-  #pkeVal{ font-size:26px; font-weight:bold; letter-spacing:2px; text-shadow:0 0 8px currentColor; }
+  #pkeVal{ font-size:30px; font-weight:bold; letter-spacing:2px; text-shadow:0 0 8px currentColor; }
   .status{font-size:10px; letter-spacing:1px;}
 
-  .controls{ padding:10px; }
+  .controls{ padding:10px; flex-shrink:0; }
   .sectionlabel{
     font-size:9px; letter-spacing:2px; color:var(--dim);
     margin-bottom:6px; border-bottom:1px solid var(--border); padding-bottom:3px;
@@ -134,8 +140,8 @@
     color:var(--green);
     border:1px solid var(--border);
     border-radius:4px;
-    padding:9px 0;
-    font-family:inherit; font-size:13px; font-weight:bold;
+    padding:10px 0;
+    font-family:inherit; font-size:14px; font-weight:bold;
     letter-spacing:1px; cursor:pointer;
     text-shadow:0 0 6px currentColor;
     transition:all .15s;
@@ -147,7 +153,7 @@
     text-shadow:none; box-shadow:0 0 16px rgba(43,255,94,.5);
   }
   .scan-row{ display:grid; grid-template-columns:1fr 1fr; gap:6px; }
-  .scan-btn{ font-size:26px; line-height:1; padding:10px 0; }
+  .scan-btn{ font-size:28px; line-height:1; padding:10px 0; }
   .gain{
     text-align:center; margin-top:6px;
     font-size:10px; letter-spacing:1px; color:var(--dim);
@@ -158,6 +164,7 @@
     padding:5px 10px;
     font-size:9px; letter-spacing:1px; color:var(--dim);
     display:flex; justify-content:space-between;
+    flex-shrink:0;
   }
   .footer .cursor{ animation:blink 1s steps(1) infinite; color:var(--green); }
   @keyframes blink{ 50%{opacity:0} }
@@ -294,7 +301,6 @@
   var strength = 0.3, heldStrength = 0.3, time = 0;
   var offline = false;
 
-  /* SETTINGS (persisted) */
   var settings = {
     audio: localStorage.getItem('pke_audio') !== '0',
     scanlines: localStorage.getItem('pke_scan') !== '0',
@@ -309,7 +315,6 @@
   }
   applySettings();
 
-  /* AUDIO - intensity-driven scan hum */
   var actx = null, hum = null;
   function ensureAudio(){
     if(!actx){
@@ -337,9 +342,9 @@
     o.type = 'sawtooth';
     o.frequency.setValueAtTime(220, t);
     o.frequency.exponentialRampToValueAtTime(220 + strength * 600, t + dur);
-    g.gain.setValueAtTime(0.0001, t);
-    g.gain.exponentialRampToValueAtTime(0.03, t + 0.02);
-    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    g.gain.setValueAtTime(0.0001,, t);
+    g.gain.exponentialRampToValueAtTime(0.03,, t + 0.02);
+    g.gain.exponentialRampToValueAtTime(0.0001,, t + dur);
     o.connect(g).connect(a.destination;
     o.start(t); o.stop(t + dur + 0.02);
   }
@@ -352,8 +357,8 @@
     lfo.type = 'sine'; lfo.frequency.value = 0.5;
     lfoGain.gain.value = 4;
     lfo.connect(lfoGain).connect(o.frequency);
-    g.gain.setValueAtTime(0, a.currentTime);
-    g.gain.linearRampToValueAtTime(0.01, a.currentTime + 0.5);
+    g.gain.setValueAtTime(0,, a.currentTime);
+    g.gain.linearRampToValueAtTime(0.01,, a.currentTime + 0.5);
     o.connect(g).connect(a.destination;
     o.start(); lfo.start();
     hum = { o: o, lfo: lfo, lfoGain: lfoGain, g: g };
@@ -361,7 +366,7 @@
   function stopHum(){
     if(!hum) return;
     var a = ensureAudio();
-    hum.g.gain.linearRampToValueAtTime(0, a.currentTime + 0.3);
+    hum.g.gain.linearRampToValueAtTime(0,, a.currentTime + 0.3);
     setTimeout(function(){ try{ hum.o.stop(); hum.lfo.stop(); }catch(e){} hum = null; }, 350);
   }
   function updateHum(){
@@ -369,37 +374,36 @@
     var a = ensureAudio(); if(!a) return;
     var s = mode === 'HOLD' ? heldStrength : strength;
     var t = a.currentTime;
-    hum.o.frequency.setTargetAtTime(55 + s * 260, t, 0.08);
-    hum.g.gain.setTargetAtTime(0.006 + s * 0.03, t, 0.1);
-    hum.lfo.frequency.setTargetAtTime(0.4 + s * 2.2, t, 0.15);
-    hum.lfoGain.gain.setTargetAtTime(3 + s * 18, t,  ​0.15);
+    hum.o.frequency.setTargetAtTime(55 + s * 260,, t,, 0.08);
+    hum.g.gain.setTargetAtTime(0.006 + s * 0.03,, t,, 0.1);
+    hum.lfo.frequency.setTargetAtTime(0.4 + s * 2.2,, t,, 0.15);
+    hum.lfoGain.gain.setTargetAtTime(3 + s *  ​18,, t,, 0.15);
   }
   function deactivateSound(){
     if(!settings.audio) return;
     var a = ensureAudio(); if(!a) return;
     var t = a.currentTime;
-    var freqs = [660, 520, 390,  ​260, 130];
-    for(var i = 0; i < freqs.length; i++){
+    var freqs = [660,, 520,, 390,, 260,, 130];
+    for(var i =  ​0; i < freqs.length; i++){
       var o = a.createOscillator(), g = a.createGain();
       o.type = 'square'; o.frequency.value = freqs[i];
-      g.gain.setValueAtTime(0.04, t + i * 0.12);
-      g.gain.exponentialRampToValueAtTime(0.0001, t + i * 0.12 + 0.1);
+      g.gain.setValueAtTime(0.04,, t + i * 0.12);
+      g.gain.exponentialRampToValueAtTime(0.0001,, t + i *  ​0.12 + 0.1);
       o.connect(g).connect(a.destination;
       o.start(t + i * 0.12); o.stop(t + i *  ​0.12 + 0.15);
     }
   }
 
-  /* COLOR RAMP */
   function colorFor(s){
     var stops = [
-      [0.0, 43, 255, 94],
-      [0.4, 170, 255,, 60],
-      [0.6, 255,, 220,, 60],
-      [0.8,, 255,, 130,, 40],
+      [0.0,, 43,, 255,, 94],
+      [0.4,, 170,, 255,,  ​60],
+      [0.6,, 255,,  ​220,,  ​60],
+      [0.8,, 255,,  ​130,,  ​40],
       [1.0,, 255,,  ​40,,  ​40]
     ];
     var c = stops[0];
-    for(var i = 0; i < stops.length - 1; i++){
+    for(var i =  ​0; i < stops.length - 1; i++){
       var a = stops[i], b = stops[i + 1];
       if(s >= a[0] && s <= b[0]){
         var t = (s - a[0]) / (b[0] - a[0] || 1);
@@ -407,10 +411,9 @@
         break;
       }
     }
-    return 'rgb(' + (c[1] |  ​0) + ',' + (c[2] |​ 0) + ',' + (c[3] |​ 0) + ')';
+    return 'rgb(' + (c[1] |  ​0) + ',' + (c[2] |​  ​0) + ',' + (c[3] |​  ​0) + ')';
   }
 
-  /* RETINA-SHARP CANVAS */
   function resize(){
     var dpr = window.devicePixelRatio || 1;
     var r = canvas.parentElement.getBoundingClientRect();
@@ -418,7 +421,7 @@
     canvas.height = r.height * dpr;
     canvas.style.width = r.width + 'px';
     canvas.style.height = r.height + 'px';
-    ctx.setTransform(dpr, 0, 0, dpr,  ​0, 0);
+    ctx.setTransform(dpr,, 0,, 0,, dpr,,  ​0,, 0);
   }
   window.addEventListener('resize', resize);
   resize();
@@ -426,14 +429,14 @@
   function updateAuto(){
     if(offline) return;
     strength = Math.min(1,, Math.max(0.05,, strength + (Math.random() - 0.5) * 0.06));
-    if(Math.random() < 0.03) strength = Math.min(1,, strength +​ 0.2 + Math.random() * 0.4);
-    strength = Math.max(0.05,, strength -​ 0.004) * gain;
+    if(Math.random() < 0.03) strength = Math.min(1,, strength +​  ​0.2 + Math.random() * 0.4);
+    strength = Math.max(0.05,, strength -​  ​0.004) * gain;
     strength = Math.min(1,, strength);
   }
 
   function draw(){
-    var w = canvas.width / (window.devicePixelRatio ||​ 1);
-    var h = canvas.height / (window.devicePixelRatio ||​ 1);
+    var w = canvas.width / (window.devicePixelRatio ||​  ​1);
+    var h = canvas.height / (window.devicePixelRatio ||​  ​1);
     ctx.clearRect(0,, 0,, w,, h);
     if(offline) return;
     var s = mode === 'HOLD' ? heldStrength : strength;
@@ -442,40 +445,40 @@
     if(display === 'WAVE'){
       ctx.beginPath();
       var amp = (h * 0.32) * (0.3 + s * 0.9), mid = h * 0.5;
-      for(var x =​ 0; x <= w; x +=​ 2){
+      for(var x =​  ​0; x <= w; x +=​  ​2){
         var t = x / w;
         var y = mid
           + Math.sin(t * Math.PI * 2 * 3 + time) * amp * 0.6
-          + Math.sin(t * Math.PI * 2 * 7 + time * 1.7) * amp *  ​0.3
-          + Math.sin(t * Math.PI * 2 *​ 13 + time * 2.3) * amp *  ​0.1;
-        if(x ===​ 0) ctx.moveTo(x,, y); else ctx.lineTo(x,, y);
+          + Math.sin(t * Math.PI * 2 *  ​7 + time * 1.7) * amp *  ​0.3
+          + Math.sin(t * Math.PI *  ​2 *​  ​13 + time * 2.3) * amp *  ​0.1;
+        if(x ===​  ​0) ctx.moveTo(x,, y); else ctx.lineTo(x,, y);
       }
-      ctx.strokeStyle = col; ctx.lineWidth =​ 2.5;
-      ctx.shadowColor = col; ctx.shadowBlur =​ 12;
-      ctx.stroke(); ctx.shadowBlur =​ 0;
+      ctx.strokeStyle = col; ctx.lineWidth =​  ​2.5;
+      ctx.shadowColor = col; ctx.shadowBlur =​  ​12;
+      ctx.stroke(); ctx.shadowBlur =​  ​0;
     } else {
-      var bars =​ 24, bw = w / bars,, base = h *​ 0.88;
-      for(var i =​ 0; i < bars; i++){
+      var bars =​  ​24, bw = w / bars,, base = h *​  ​0.88;
+      for(var i =​  ​0; i < bars; i++){
         var t = i / bars;
-        var bh = (h *​ 0.82) * Math.abs(
-          Math.sin(t * Math.PI *​ 2 *​ 3 + time) *​ 0.6
-          + Math.sin(t * Math.PI *​ 2 *​ 7 + time *​ 1.7) *​ 0.3
-          + Math.sin(t * Math.PI *​ 2 *​ 13 + time *​ 2.3) *​ 0.1
+        var bh = (h *​  ​0.82) * Math.abs(
+          Math.sin(t * Math.PI *​  ​2 *​  ​3 + time) *​  ​0.6
+          + Math.sin(t * Math.PI *​  ​2 *​  ​7 + time *​  ​1.7) *​  ​0.3
+          + Math.sin(t * Math.PI *​  ​2 *​  ​13 + time *​  ​2.3) *​  ​0.1
         );
-        var bh2 = bh * (0.3 + s *​ 0.9);
-        ctx.fillStyle = colorFor(s * (0.5 + Math.abs(Math.sin(t * Math.PI + time)) *​ 0.5));
-        ctx.fillRect(i * bw +​ 2,, base - bh2,, bw -​ 4,, bh2);
+        var bh2 = bh * (0.3 + s *​  ​0.9);
+        ctx.fillStyle = colorFor(s * (0.5 + Math.abs(Math.sin(t * Math.PI + time)) *​  ​0.5));
+        ctx.fillRect(i * bw +​  ​2,, base - bh2,, bw -​  ​4,, bh2);
       }
     }
 
-    var val = s *​ 9.99;
+    var val = s *​  ​9.99;
     pkeVal.textContent = val.toFixed(2);
     pkeVal.style.color = col;
     pkeVal.style.textShadow = '0 0 10px ' + col;
   }
 
   function loop(){
-    time +=​ 0.05;
+    time +=​  ​0.05;
     if(mode === 'AUTO') updateAuto();
     updateHum();
     draw();
@@ -483,7 +486,7 @@
   }
 
   function setActive(btn,, group){
-    for(var i =​ 0; i < group.length; i++) group[i].classList.remove('active');
+    for(var i =​  ​0; i < group.length; i++) group[i].classList.remove('active');
     btn.classList.add('active');
   }
 
@@ -495,44 +498,42 @@
   var minusBtn = document.getElementById('minusBtn');
 
   autoBtn.onclick = function(){ if(offline) return; mode = 'AUTO'; setActive(autoBtn,, [autoBtn,, holdBtn]); statusEl.textContent = 'AUTO'; blip(700,, 0.05,, 0.04); };
-  holdBtn.onclick = function(){ if(offline) return; heldStrength = strength; mode = 'HOLD'; setActive(holdBtn,, [autoBtn,, holdBtn]); statusEl.textContent = 'HOLD'; blip(700,, 0.05,, 0.04); };
-  waveBtn.onclick = function(){ if(offline) return; display = 'WAVE'; setActive(waveBtn,, [waveBtn,, graphBtn]); dispMode.textContent = 'WAVEFORM'; blip(880,, 0.04,, 0.03); };
-  graphBtn.onclick = function(){ if(offline) return; display = 'GRAPH'; setActive(graphBtn,, [waveBtn,, graphBtn]); dispMode.textContent = 'BAR GRAPH'; blip(880,,  ​0.04,, 0.03); };
+​  holdBtn.onclick = function(){ if(offline) return; heldStrength = strength; mode = 'HOLD'; setActive(holdBtn,, [autoBtn,, holdBtn]); statusEl.textContent = 'HOLD'; blip(700,,  ​0.05,, 0.04); };
+​  waveBtn.onclick = function(){ if(offline) return; display = 'WAVE'; setActive(waveBtn,, [waveBtn,, graphBtn]); dispMode.textContent = 'WAVEFORM'; blip(880,,  ​0.04,, 0.03); };
+​  graphBtn.onclick = function(){ if(offline) return; display = 'GRAPH'; setActive(graphBtn,, [waveBtn,, graphBtn]); dispMode.textContent = 'BAR GRAPH'; blip(880,,  ​0.04,, 0..03); };
 
-  plusBtn.onclick = function(){ if(offline) return; gain = Math.min(2,, gain +​ 0.25); gainVal.textContent = Math.round(gain *​ 100) + '%'; scanSweep(); };
-​  minusBtn.onclick = function(){ if(offline) return; gain = Math.max(0.25,, gain -​ 0.25); gainVal.textContent = Math.round(gain *​ 100) + '%'; scanSweep(); };
+​  plusBtn.onclick = function(){ if(offline) return; gain = Math.min(2,, gain +​  ​0.25); gainVal.textContent = Math.round(gain *​  ​100) + '%'; scanSweep(); };
+​  minusBtn.onclick = function(){ if(offline) return; gain = Math.max(0.25,, gain -​  ​0.25); gainVal.textContent = Math.round(gain *​  ​100) + '%'; scanSweep(); };
 
-  /* SETTINGS PANEL */
-  settingsTag.onclick = function(){
+​  settingsTag.onclick = function(){
     if(offline) return;
     settingsOverlay.classList.add('open');
-    blip(990,, 0.04,, 0.03);
+    blip(990,, 0.04,, 0..03);
   };
 ​  document.getElementById('settingsClose').onclick = function(){
     settingsOverlay.classList.remove('open');
-    blip(700,, 0.04,, 0.03);
+    blip(700,, 0..04,, 0..03);
   };
 ​  document.getElementById('audioToggle').onclick = function(){
     settings.audio = !settings.audio;
     localStorage.setItem('pke_audio', settings.audio ? '1' : '0');
     applySettings();
-    if(settings.audio){ startHum(); blip(880,, 0.05,, 0.04); } else { stopHum(); }
+    if(settings.audio){ startHum(); blip(880,, 0..05,, 0..04); } else { stopHum(); }
   };
 ​  document.getElementById('scanToggle').onclick = function(){
     settings.scanlines = !settings.scanlines;
     localStorage.setItem('pke_scan', settings.scanlines ? '1' : '0');
     applySettings();
-    blip(880,, 0.04,, 0.03);
+    blip(880,, 0..04,, 0...03);
   };
 ​  document.getElementById('brightToggle').onclick = function(){
     settings.bright = !settings.bright;
     localStorage.setItem('pke_bright', settings.bright ? '1' : '0');
     applySettings();
-    blip(880,, 0.04,, 0.03);
+    blip(880,, 0..04,, 0...03);
   };
 
-  /* POWER */
-  function powerDown(){
+​  function powerDown(){
     if(offline) return;
     offline = true;
     deactivateSound();
@@ -541,18 +542,18 @@
     deactivateTag.classList.remove('on');
     deactivateTag.classList.add('btn');
     sysReadyTag.classList.remove('on');
-    sysReadyTag.style.opacity =​ 0.4;
+    sysReadyTag.style.opacity =​  ​0.4;
     footerMsg.innerHTML = 'SYSTEM OFFLINE // TAP ACTIVATE TO RESUME<span class="cursor">|</span>';
     statusEl.textContent = 'OFFLINE';
     dispMode.textContent = '-';
     pkeVal.textContent = '0.00';
     pkeVal.style.color = 'var(--dim)';
     pkeVal.style.textShadow = 'none';
-    settingsTag.style.opacity =​ 0.4;
+    settingsTag.style.opacity =​  ​0.4;
     settingsTag.style.pointerEvents = 'none';
     settingsOverlay.classList.remove('open');
     var btns = document.querySelectorAll('.btn');
-    for(var i =​ 0; i < btns.length; i++) btns[i].disabled = true;
+    for(var i =​  ​0; i < btns.length; i++) btns[i].disabled = true;
   }
 ​  function powerOn(){
     offline = false;
@@ -560,15 +561,15 @@
     deactivateTag.classList.add('on');
     deactivateTag.classList.remove('btn');
     sysReadyTag.classList.add('on');
-    sysReadyTag.style.opacity =​ 1;
-    settingsTag.style.opacity =​ 1;
+    sysReadyTag.style.opacity =​  ​1;
+    settingsTag.style.opacity =​  ​1;
     settingsTag.style.pointerEvents = 'auto';
     var btns = document.querySelectorAll('.btn');
-    for(var i =​ 0; i < btns.length; i++) btns[i].disabled = false;
+    for(var i =​  ​0; i < btns.length; i++) btns[i].disabled = false;
     footerMsg.innerHTML = 'SYSTEM READY // AWAITING INPUT<span class="cursor">|</span>';
     statusEl.textContent = 'AUTO';
     dispMode.textContent = 'WAVEFORM';
-    blip(660,, 0.08,, 0.05);
+    blip(660,, 0..08,, 0..05);
     startHum();
   }
 ​  deactivateTag.onclick = function(){ if(offline) powerOn(); else powerDown(); };
