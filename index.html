@@ -35,6 +35,7 @@
     border-radius:8px;
     box-shadow:0 0 40px rgba(43,255,94,.12) inset;
     overflow:hidden;
+    position:relative;
   }
   .topbar{
     display:flex; justify-content:space-between; align-items:center;
@@ -69,13 +70,15 @@
     background:var(--screen-bg);
     border-bottom:1px solid var(--border);
     overflow:hidden;
-    height:200px;
+    height:230px;
+    transition:opacity .3s;
   }
   .screen::after{
     content:""; position:absolute; inset:0;
     background:repeating-linear-gradient(to bottom,
       rgba(43,255,94,.05) 0px, rgba(43,255,94,.05) 1px, transparent 1px, transparent 3px);
     pointer-events:none; z-index:5;
+    opacity:var(--scanlines,1);
   }
   .screen::before{
     content:""; position:absolute; inset:0;
@@ -158,6 +161,45 @@
   }
   .footer .cursor{ animation:blink 1s steps(1) infinite; color:var(--green); }
   @keyframes blink{ 50%{opacity:0} }
+
+  /* SETTINGS PANEL */
+  .overlay{
+    position:absolute; inset:0;
+    background:rgba(4,8,5,.96);
+    z-index:20;
+    display:none;
+    flex-direction:column;
+    padding:14px;
+  }
+  .overlay.open{ display:flex; }
+  .overlay h2{
+    font-size:12px; letter-spacing:2px;
+    border-bottom:1px solid var(--border); padding-bottom:6px; margin-bottom:12px;
+  }
+  .setting-row{
+    display:flex; justify-content:space-between; align-items:center;
+    padding:10px 0; border-bottom:1px solid var(--border);
+    font-size:12px; letter-spacing:1px;
+  }
+  .toggle{
+    width:52px; height:28px; border-radius:14px;
+    background:#12200f; border:1px solid var(--border);
+    position:relative; cursor:pointer; transition:background .2s;
+  }
+  .toggle::after{
+    content:""; position:absolute; top:3px; left:3px;
+    width:20px; height:20px; border-radius:50%;
+    background:var(--dim); transition:all .2s;
+  }
+  .toggle.on{ background:var(--green); border-color:var(--green); }
+  .toggle.on::after{ left:27px; background:#041005; }
+  .close-btn{
+    margin-top:auto;
+    background:var(--btn); color:var(--green);
+    border:1px solid var(--border); border-radius:4px;
+    padding:10px 0; font-family:inherit; font-size:13px; font-weight:bold;
+    letter-spacing:1px; cursor:pointer;
+  }
 </style>
 </head>
 <body>
@@ -213,6 +255,24 @@
     <span>ECTO FIELD SYSTEM // LIVE STATUS</span>
     <span id="footerMsg">SYSTEM READY // AWAITING INPUT<span class="cursor">|</span></span>
   </div>
+
+  <!-- SETTINGS OVERLAY -->
+  <div class="overlay" id="settingsOverlay">
+    <h2>SYSTEM SETTINGS</h2>
+    <div class="setting-row">
+      <span>AUDIO</span>
+      <div class="toggle on" id="audioToggle"></div>
+    </div>
+    <div class="setting-row">
+      <span>SCANLINES</span>
+      <div class="toggle on" id="scanToggle"></div>
+    </div>
+    <div class="setting-row">
+      <span>BRIGHTNESS</span>
+      <div class="toggle on" id="brightToggle"></div>
+    </div>
+    <button class="close-btn" id="settingsClose">CLOSE</button>
+  </div>
 </div>
 
 <script>
@@ -227,13 +287,30 @@
   var sysReadyTag = document.getElementById('sysReadyTag');
   var deactivateTag = document.getElementById('deactivateTag');
   var settingsTag = document.getElementById('settingsTag');
+  var settingsOverlay = document.getElementById('settingsOverlay');
+  var screenEl = document.getElementById('screen');
 
   var mode = 'AUTO', display = 'WAVE', gain = 1.0;
   var strength = 0.3, heldStrength = 0.3, time = 0;
   var offline = false;
 
+  /* SETTINGS (persisted) */
+  var settings = {
+    audio: localStorage.getItem('pke_audio') !== '0',
+    scanlines: localStorage.getItem('pke_scan') !== '0',
+    bright: localStorage.getItem('pke_bright') !== '0'
+  };
+  function applySettings(){
+    document.getElementById('audioToggle').classList.toggle('on', settings.audio);
+    document.getElementById('scanToggle').classList.toggle('on', settings.scanlines);
+    document.getElementById('brightToggle').classList.toggle('on', settings.bright);
+    screenEl.style.setProperty('--scanlines', settings.scanlines ? 1 : 0);
+    screenEl.style.opacity = settings.bright ? 1 : 0.6;
+  }
+  applySettings();
+
   /* AUDIO */
-  var actx = null;
+  var actx = null, humNode = null;
   function ensureAudio(){
     if(!actx){
       actx = new (window.AudioContext || window.webkitAudioContext)();
@@ -242,7 +319,7 @@
     return actx;
   }
   function blip(freq, dur, vol){
-    if(offline) return;
+    if(offline || !settings.audio) return;
     var a = ensureAudio(); if(!a) return;
     var o = a.createOscillator(), g = a.createGain();
     o.type = 'square'; o.frequency.value = freq;
@@ -253,7 +330,7 @@
     o.start(); o.stop(a.currentTime + dur + 0.02);
   }
   function scanSweep(){
-    if(offline) return;
+    if(offline || !settings.audio) return;
     var a = ensureAudio(); if(!a) return;
     var t = a.currentTime, dur = 0.5;
     var o = a.createOscillator(), g = a.createGain();
@@ -266,7 +343,29 @@
     o.connect(g).connect(a.destination);
     o.start(t); o.stop(t + dur + 0.02);
   }
+  function startHum(){
+    if(humNode || offline || !settings.audio) return;
+    var a = ensureAudio(); if(!a) return;
+    var o = a.createOscillator(), lfo = a.createOscillator(), lfoGain = a.createGain(), g = a.createGain();
+    o.type = 'sawtooth'; o.frequency.value = 55;
+    lfo.type = 'sine'; lfo.frequency.value = 0.5;
+    lfoGain.gain.value = 4;
+    lfo.connect(lfoGain).connect(o.frequency);
+    g.gain.setValueAtTime(0, a.currentTime);
+    g.gain.linearRampToValueAtTime(0.015, a.currentTime + 0.5);
+    o.connect(g).connect(a.destination);
+    o.start(); lfo.start();
+    humNode = { o: o, lfo: lfo, g: g };
+  }
+  function stopHum(){
+    if(!humNode) return;
+    var a = ensureAudio();
+    var g = humNode.g;
+    g.gain.linearRampToValueAtTime(0, a.currentTime + 0.3);
+    setTimeout(function(){ try{ humNode.o.stop(); humNode.lfo.stop(); }catch(e){} humNode = null; }, 350);
+  }
   function deactivateSound(){
+    if(!settings.audio) return;
     var a = ensureAudio(); if(!a) return;
     var t = a.currentTime;
     var freqs = [660, 520, 390, 260, 130];
@@ -301,10 +400,15 @@
     return 'rgb(' + (c[1] | 0) + ',' + (c[2] | 0) + ',' + (c[3] | 0) + ')';
   }
 
+  /* RETINA-SHARP CANVAS */
   function resize(){
+    var dpr = window.devicePixelRatio || 1;
     var r = canvas.parentElement.getBoundingClientRect();
-    canvas.width = r.width;
-    canvas.height = r.height;
+    canvas.width = r.width * dpr;
+    canvas.height = r.height * dpr;
+    canvas.style.width = r.width + 'px';
+    canvas.style.height = r.height + 'px';
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   }
   window.addEventListener('resize', resize);
   resize();
@@ -318,7 +422,8 @@
   }
 
   function draw(){
-    var w = canvas.width, h = canvas.height;
+    var w = canvas.width / (window.devicePixelRatio || 1);
+    var h = canvas.height / (window.devicePixelRatio || 1);
     ctx.clearRect(0, 0, w, h);
     if(offline) return;
     var s = mode === 'HOLD' ? heldStrength : strength;
@@ -386,15 +491,47 @@
   plusBtn.onclick = function(){ if(offline) return; gain = Math.min(2, gain + 0.25); gainVal.textContent = Math.round(gain * 100) + '%'; scanSweep(); };
   minusBtn.onclick = function(){ if(offline) return; gain = Math.max(0.25, gain - 0.25); gainVal.textContent = Math.round(gain * 100) + '%'; scanSweep(); };
 
+  /* SETTINGS PANEL */
+  settingsTag.onclick = function(){
+    if(offline) return;
+    settingsOverlay.classList.add('open');
+    blip(990, 0.04, 0.03);
+  };
+  document.getElementById('settingsClose').onclick = function(){
+    settingsOverlay.classList.remove('open');
+    blip(700, 0.04, 0.03);
+  };
+  document.getElementById('audioToggle').onclick = function(){
+    settings.audio = !settings.audio;
+    localStorage.setItem('pke_audio', settings.audio ? '1' : '0');
+    applySettings();
+    if(settings.audio){ startHum(); blip(880, 0.05, 0.04); } else { stopHum(); }
+  };
+  document.getElementById('scanToggle').onclick = function(){
+    settings.scanlines = !settings.scanlines;
+    localStorage.setItem('pke_scan', settings.scanlines ? '1' : '0');
+    applySettings();
+    blip(880, 0.04, 0.03);
+  };
+  document.getElementById('brightToggle').onclick = function(){
+    settings.bright = !settings.bright;
+    localStorage.setItem('pke_bright', settings.bright ? '1' : '0');
+    applySettings();
+    blip(880, 0.04, 0.03);
+  };
+
+  /* POWER */
   function powerDown(){
     if(offline) return;
     offline = true;
     deactivateSound();
+    stopHum();
+    deactivateTag.textContent = 'ACTIVATE';
     deactivateTag.classList.remove('on');
     deactivateTag.classList.add('btn');
     sysReadyTag.classList.remove('on');
     sysReadyTag.style.opacity = 0.4;
-    footerMsg.innerHTML = 'SYSTEM OFFLINE // REACTIVATE TO RESUME<span class="cursor">|</span>';
+    footerMsg.innerHTML = 'SYSTEM OFFLINE // TAP ACTIVATE TO RESUME<span class="cursor">|</span>';
     statusEl.textContent = 'OFFLINE';
     dispMode.textContent = '-';
     pkeVal.textContent = '0.00';
@@ -402,11 +539,13 @@
     pkeVal.style.textShadow = 'none';
     settingsTag.style.opacity = 0.4;
     settingsTag.style.pointerEvents = 'none';
+    settingsOverlay.classList.remove('open');
     var btns = document.querySelectorAll('.btn');
     for(var i = 0; i < btns.length; i++) btns[i].disabled = true;
   }
   function powerOn(){
     offline = false;
+    deactivateTag.textContent = 'DEACTIVATE';
     deactivateTag.classList.add('on');
     deactivateTag.classList.remove('btn');
     sysReadyTag.classList.add('on');
@@ -419,12 +558,14 @@
     statusEl.textContent = 'AUTO';
     dispMode.textContent = 'WAVEFORM';
     blip(660, 0.08, 0.05);
+    startHum();
   }
   deactivateTag.onclick = function(){ if(offline) powerOn(); else powerDown(); };
 
-  settingsTag.onclick = function(){ if(offline) return; blip(990, 0.04, 0.03); };
-
-  document.addEventListener('click', function(){ ensureAudio(); }, { once: true });
+  document.addEventListener('click', function(){
+    ensureAudio();
+    if(!offline && settings.audio) startHum();
+  }, { once: true });
 
   var manifest = {
     name: 'ECTO OS // PKE METRE',
