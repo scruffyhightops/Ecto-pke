@@ -148,8 +148,6 @@
     screenEl.style.opacity=settings.bright?1:0.6;
   }
   applySettings();
-
-  /* AUDIO - heart-monitor style scan beep */
   var actx=null,beatTimer=null;
   function ensureAudio(){
     if(!actx){actx=new (window.AudioContext||window.webkitAudioContext)();}
@@ -404,4 +402,11 @@
   document.getElementById('manifest').setAttribute('href','data:application/manifest+json,'+encodeURIComponent(JSON.stringify(manifest)));
   if('serviceWorker' in navigator){
     var sw="const CACHE='pke-v1';self.addEventListener('install',e=>{self.skipWaiting()});self.addEventListener('activate',e=>{e.waitUntil(clients.claim())});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;e.respondWith(caches.open(CACHE).then(c=>c.match(e.request)).then(r=>r||fetch(e.request)));});";
-    navigator.serviceW
+    navigator.serviceWorker.register(URL.createObjectURL(new Blob([sw],{type:'text/javascript'})));
+  }
+  loop();
+})();
+</script>
+</body>
+</html>
+```
