@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
 <meta name="theme-color" content="#070907">
 <link rel="manifest" href="manifest.json">
-<title>PKE Field Analyser v5</title>
+<title>PKE Field Analyser v6 — Separate Modes</title>
 <style>
 :root{
  --green:#74ff74;--yellow:#ffe45a;--red:#ff5147;--text:#d9e8d9;
@@ -24,8 +24,8 @@ body{font-family:var(--tech);display:flex;justify-content:center}
 .number{font-size:32px;font-weight:bold;letter-spacing:3px;line-height:1.05;margin-top:3px}
 .readingState{font-size:9px;opacity:.65;margin-top:3px}
 .analysis{position:relative;flex:1;min-height:0;background:#060806;border:1px solid #596259;overflow:hidden}
-.view{position:absolute;inset:0;display:none;padding:10px}
-.view.active{display:flex}
+.view{position:absolute;inset:0;display:none !important;padding:10px;visibility:hidden;pointer-events:none}
+.view.active{display:flex !important;visibility:visible;pointer-events:auto}
 .view:before{content:"";position:absolute;inset:0;background-image:linear-gradient(var(--grid) 1px,transparent 1px),linear-gradient(90deg,var(--grid) 1px,transparent 1px);background-size:24px 24px;pointer-events:none}
 .view>*{position:relative;z-index:1}
 
@@ -81,7 +81,7 @@ button:active{background:#171d17}
 </head>
 <body>
 <main id="app">
-<header class="header"><span class="title">PKE FIELD ANALYSER</span><span id="status" class="status">STANDBY</span></header>
+<header class="header"><span class="title">PKE FIELD ANALYSER / V6</span><span id="status" class="status">STANDBY</span></header>
 
 <section class="readout">
  <div id="modeTitle" class="modeTitle">SYSTEM OFFLINE</div>
@@ -91,7 +91,7 @@ button:active{background:#171d17}
 
 <section class="analysis" id="analysis">
  <!-- SPD SCREEN -->
- <section class="view spd active" id="spdView">
+ <section class="view spd active" id="spdView"><div style="position:absolute;right:8px;top:5px;font:9px var(--tech);letter-spacing:1px">MODE 01 / SPD</div>
   <div class="spdPanel"><span class="panelLabel">PARTICLE DENSITY / FIELD A</span><div class="barSet" id="barsA"></div></div>
   <div class="spdPanel"><span class="panelLabel">PARTICLE DENSITY / FIELD B</span><div class="barSet" id="barsB"></div></div>
   <div class="spdFooter">
@@ -102,7 +102,7 @@ button:active{background:#171d17}
  </section>
 
  <!-- SPV SCREEN -->
- <section class="view spv" id="spvView">
+ <section class="view spv" id="spvView"><div style="position:absolute;right:8px;top:5px;font:9px var(--tech);letter-spacing:1px">MODE 02 / SPV</div>
   <div class="vectorArea" id="vectorArea">
    <div class="vectorGrid" id="vectorGrid"></div>
   </div>
@@ -113,7 +113,7 @@ button:active{background:#171d17}
  </section>
 
  <!-- SDR SCREEN -->
- <section class="view sdr" id="sdrView">
+ <section class="view sdr" id="sdrView"><div style="position:absolute;right:8px;top:5px;font:9px var(--tech);letter-spacing:1px">MODE 03 / SDR</div>
   <div class="curvePanel">
    <div class="axisY">PKE ENERGY</div>
    <div class="axisX">TIME / SECONDS</div>
@@ -143,7 +143,7 @@ button:active{background:#171d17}
 const app=document.getElementById('app'), numberEl=document.getElementById('number'), titleEl=document.getElementById('modeTitle'), statusEl=document.getElementById('status');
 const views={SPD:document.getElementById('spdView'),SPV:document.getElementById('spvView'),SDR:document.getElementById('sdrView')};
 const modeButtons=[...document.querySelectorAll('.modeButtons button')];
-let active=false,auto=false,hold=false,mode='SPD',value=7600,t=0,frame=0;
+let active=false,auto=false,hold=false,mode='SPD',value=7600,t=0,frame=0; let audioCtx=null;
 
 function clamp(v,a,b){return Math.max(a,Math.min(b,v))}
 function sev(){return clamp((5000-value)/5000,0,1)}
@@ -157,9 +157,33 @@ function cls(v){
  if(v>=500)return 'VI';
  return 'VII';
 }
+function switchTone(){
+ try{
+  audioCtx ||= new (window.AudioContext||window.webkitAudioContext)();
+  const o=audioCtx.createOscillator(), g=audioCtx.createGain();
+  o.type='square'; o.frequency.value=mode==='SPD'?520:mode==='SPV'?690:860;
+  g.gain.setValueAtTime(.0001,audioCtx.currentTime);
+  g.gain.exponentialRampToValueAtTime(.035,audioCtx.currentTime+.008);
+  g.gain.exponentialRampToValueAtTime(.0001,audioCtx.currentTime+.07);
+  o.connect(g).connect(audioCtx.destination); o.start(); o.stop(audioCtx.currentTime+.08);
+ }catch(e){}
+}
 function selectMode(m){
+ if(m!==mode) switchTone();
  mode=m;
- Object.entries(views).forEach(([k,v])=>v.classList.toggle('active',k===m));
+ Object.entries(views).forEach(([k,v])=>{
+   const on=k===m;
+   v.classList.remove('active');
+   v.setAttribute('aria-hidden', on ? 'false' : 'true');
+   v.style.display=on ? 'flex' : 'none';
+   v.style.visibility=on ? 'visible' : 'hidden';
+   v.style.pointerEvents=on ? 'auto' : 'none';
+ });
+ const activeView=views[m];
+ activeView.classList.add('active');
+ activeView.style.display='flex';
+ activeView.style.visibility='visible';
+ activeView.style.pointerEvents='auto';
  modeButtons.forEach(b=>b.classList.toggle('active',b.dataset.mode===m));
  titleEl.textContent=m==='SPD'?'SPECTRAL PARTICLE DENSITY':m==='SPV'?'SPECTRAL VELOCITY':'SPECTRAL DECAY RATE';
  drawAll();
