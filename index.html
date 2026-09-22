@@ -22,7 +22,7 @@ body{font-family:var(--tech);display:flex;justify-content:center}
 .readout{border:1px solid #485348;padding:8px;text-align:center;background:#090c09}
 .modeTitle{font:12px var(--ui);letter-spacing:1.7px}
 .number{font-size:32px;font-weight:bold;letter-spacing:3px;line-height:1.05;margin-top:3px}
-.readingState{font-size:9px;opacity:.65;margin-top:3px}
+.readingState{font-size:9px;opacity:.65;margin-top:3px}.number{color:var(--green);transition:color .12s linear}.audioState{font-size:8px;opacity:.55;letter-spacing:1px;margin-top:2px}
 .analysis{position:relative;flex:1;min-height:0;background:#060806;border:1px solid #596259;overflow:hidden}
 .view{position:absolute;inset:0;display:none !important;padding:10px;visibility:hidden;pointer-events:none}
 .view.active{display:flex !important;visibility:visible;pointer-events:auto}
@@ -81,12 +81,12 @@ button:active{background:#171d17}
 </head>
 <body>
 <main id="app">
-<header class="header"><span class="title">PKE FIELD ANALYSER / V6</span><span id="status" class="status">STANDBY</span></header>
+<header class="header"><span class="title">PKE FIELD ANALYSER / V7</span><span id="status" class="status">STANDBY</span></header>
 
 <section class="readout">
  <div id="modeTitle" class="modeTitle">SYSTEM OFFLINE</div>
  <div id="number" class="number">00000.0</div>
- <div class="readingState">PKE FIELD INDEX</div>
+ <div class="readingState">PKE FIELD INDEX</div><div id="audioState" class="audioState">AUDIO READY</div>
 </section>
 
 <section class="analysis" id="analysis">
@@ -140,22 +140,33 @@ button:active{background:#171d17}
 </main>
 
 <script>
-const app=document.getElementById('app'), numberEl=document.getElementById('number'), titleEl=document.getElementById('modeTitle'), statusEl=document.getElementById('status');
+const app=document.getElementById('app'), numberEl=document.getElementById('number'), titleEl=document.getElementById('modeTitle'), statusEl=document.getElementById('status'), audioState=document.getElementById('audioState');
 const views={SPD:document.getElementById('spdView'),SPV:document.getElementById('spvView'),SDR:document.getElementById('sdrView')};
 const modeButtons=[...document.querySelectorAll('.modeButtons button')];
-let active=false,auto=false,hold=false,mode='SPD',value=7600,t=0,frame=0; let audioCtx=null;
+let active=false,auto=false,hold=false,mode='SPD',value=7600,t=0,frame=0; let audioCtx=null,lastValue=value,lastSound=0;
 
 function clamp(v,a,b){return Math.max(a,Math.min(b,v))}
 function sev(){return clamp((5000-value)/5000,0,1)}
 function fmt(v){return v.toFixed(1).padStart(7,'0')}
 function cls(v){
- if(v>5000)return '—';
- if(v>=3000)return 'PKE';
- if(v>=1984)return 'I–II';
- if(v>=1555)return 'III–IV';
- if(v>=1333.5)return 'V';
- if(v>=500)return 'VI';
- return 'VII';
+ if(v>5000)return 'NO PKE';
+ if(v>=3000)return 'PKE DETECTED';
+ if(v>=1984)return 'CLASS I–II';
+ if(v>=1555)return 'CLASS III–IV';
+ if(v>=1333.5)return 'CLASS V';
+ if(v>=500)return 'CLASS VI';
+ return 'CLASS VII';
+}
+function readingColour(v){
+ // The displayed reading follows the supplied Ghost Scale:
+ // >5000 = no PKE; 5000–3000 = detected; then I–II, III–IV, V, VI, VII.
+ if(v>5000)return '#74ff74';
+ if(v>=3000)return '#74ff74';
+ if(v>=1984)return '#74ff74';
+ if(v>=1555)return '#ffe45a';
+ if(v>=1333.5)return '#ffcc42';
+ if(v>=500)return '#ff9638';
+ return '#ff5147';
 }
 function switchTone(){
  try{
@@ -168,8 +179,39 @@ function switchTone(){
   o.connect(g).connect(audioCtx.destination); o.start(); o.stop(audioCtx.currentTime+.08);
  }catch(e){}
 }
+function ensureAudio(){
+ try{
+  audioCtx ||= new (window.AudioContext||window.webkitAudioContext)();
+  if(audioCtx.state==='suspended') audioCtx.resume();
+  audioState.textContent='AUDIO ACTIVE';
+  return true;
+ }catch(e){audioState.textContent='AUDIO UNAVAILABLE';return false}
+}
+function tone(freq,duration,gain=.025,type='sine'){
+ if(!ensureAudio()) return;
+ const now=audioCtx.currentTime, o=audioCtx.createOscillator(), g=audioCtx.createGain();
+ o.type=type; o.frequency.setValueAtTime(freq,now);
+ g.gain.setValueAtTime(.0001,now);
+ g.gain.exponentialRampToValueAtTime(gain,now+.008);
+ g.gain.exponentialRampToValueAtTime(.0001,now+duration);
+ o.connect(g).connect(audioCtx.destination);o.start(now);o.stop(now+duration+.01);
+}
+function modeTone(m){
+ tone(m==='SPD'?480:m==='SPV'?650:820,.075,.035,'square');
+ setTimeout(()=>tone(m==='SPD'?720:m==='SPV'?390:610,.055,.018,'square'),55);
+}
+function scanTone(){
+ if(!active||hold||!auto) return;
+ const s=sev();
+ // A soft rising/faster pulse as the analyser approaches the entity.
+ const interval=900-s*650;
+ if(frame-lastSound > interval/100){
+   lastSound=frame;
+   tone(240+s*520,.055,.012,'sine');
+ }
+}
 function selectMode(m){
- if(m!==mode) switchTone();
+ if(m!==mode){ modeTone(m); }
  mode=m;
  Object.entries(views).forEach(([k,v])=>{
    const on=k===m;
@@ -189,7 +231,7 @@ function selectMode(m){
  drawAll();
 }
 function renderStatus(){
- numberEl.textContent=fmt(value);
+ numberEl.textContent=fmt(value); numberEl.style.color=readingColour(value);
  statusEl.textContent=!active?'STANDBY':hold?'HOLD':auto?'AUTO SCAN':'MANUAL';
 }
 function makeBars(id){
@@ -220,19 +262,26 @@ function drawSPD(){
 }
 
 function drawSPV(){
- const s=sev(), speed=s*10, dir=(t*38+s*160)%360;
+ const s=sev();
+ // Direction is the simulated ENTITY MOVEMENT VECTOR.
+ // It changes smoothly rather than behaving like a rotating decorative arrow.
+ const dx=Math.cos(t*.42 + s*1.7);
+ const dy=Math.sin(t*.31 + s*2.3);
+ const dir=(Math.atan2(dy,dx)*180/Math.PI+360)%360;
+ const speed=s*10;
  document.getElementById('spvVelocity').textContent=speed.toFixed(1);
  document.getElementById('spvDirection').textContent=String(Math.round(dir)).padStart(3,'0')+'°';
  const squares=document.querySelectorAll('.square');
- const theta=dir*Math.PI/180;
+ const spread=7*(.55+s);
  squares.forEach((q,i)=>{
-   const d=(i-4)*7*(.45+s);
-   const x=50+Math.cos(theta)*d;
-   const y=50+Math.sin(theta)*d;
-   q.style.left=x+'%';q.style.top=y+'%';
-   q.style.width=(8+s*10)+'px';q.style.height=(8+s*10)+'px';
-   q.style.opacity=.35+s*.65-i*.025;
+   const d=(i-4)*spread;
+   const x=50+dx*d;
+   const y=50+dy*d;
+   q.style.left=x+'%'; q.style.top=y+'%';
+   q.style.width=(8+s*10)+'px'; q.style.height=(8+s*10)+'px';
+   q.style.opacity=.3+s*.7-i*.025;
  });
+}
 }
 
 function drawSDR(){
@@ -263,20 +312,21 @@ function tick(){
    const s=sev();
    value=clamp(value+(Math.random()-.5)*650-s*90,0,10000);
  }
- t+=.035; frame++;
+ t+=.035; frame++; scanTone();
  drawAll();
 }
 document.getElementById('power').onclick=()=>{
  active=!active;
+ if(active) ensureAudio();
  document.getElementById('power').textContent=active?'DEACTIVATE':'ACTIVATE';
- if(active){value=7600;auto=true;hold=false}
- else{auto=false;hold=false}
+ if(active){value=7600;auto=true;hold=false; tone(420,.12,.035,'square');}
+ else{auto=false;hold=false; tone(180,.12,.025,'square');}
  drawAll();
 };
 document.getElementById('auto').onclick=()=>{if(active){auto=true;hold=false;drawAll()}};
 document.getElementById('hold').onclick=()=>{if(active){hold=!hold;drawAll()}};
-document.getElementById('up').onclick=()=>{if(active){value=clamp(value+250,0,10000);auto=false;hold=false;drawAll()}};
-document.getElementById('down').onclick=()=>{if(active){value=clamp(value-250,0,10000);auto=false;hold=false;drawAll()}};
+document.getElementById('up').onclick=()=>{if(active){value=clamp(value+250,0,10000);auto=false;hold=false;tone(620,.035,.018,'square');drawAll()}};
+document.getElementById('down').onclick=()=>{if(active){value=clamp(value-250,0,10000);auto=false;hold=false;tone(300,.035,.018,'square');drawAll()}};
 modeButtons.forEach(b=>b.onclick=()=>{if(active)selectMode(b.dataset.mode)});
 setInterval(tick,100);
 drawAll();
