@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
 <meta name="theme-color" content="#070907">
 <link rel="manifest" href="manifest.json">
-<title>PKE Field Analyser v6 — Separate Modes</title>
+<title>PKE Field Analyser v10 — Separate Modes</title>
 <style>
 :root{
  --green:#74ff74;--yellow:#ffe45a;--red:#ff5147;--text:#d9e8d9;
@@ -83,7 +83,7 @@ button.active{background:#182018}
 </head>
 <body>
 <main id="app">
-<header class="header"><span class="title">PKE FIELD ANALYSER / V9</span><span id="status" class="status">STANDBY</span></header>
+<header class="header"><span class="title">PKE FIELD ANALYSER / V10</span><span id="status" class="status">STANDBY</span></header>
 
 <section class="readout">
  <div id="modeTitle" class="modeTitle">SYSTEM OFFLINE</div>
@@ -282,25 +282,97 @@ async function toggleMicrophone(){
  drawAll();
 }
 
-toggleMicrophone.cleanup=()=>{micStream?.getTracks().forEach(track=>track.stop())};
+function cleanupMicrophone(){
+  if(micStream){
+    micStream.getTracks().forEach(function(track){ track.stop(); });
+  }
+  micStream=null;
+  if(micSource){ try{ micSource.disconnect(); }catch(e){} }
+  micSource=null;
+  analyser=null;
+  micData=null;
+  micActive=false;
+}
 
-toggleMicrophone;
-environmentBtn.addEventListener('click',toggleMicrophone);
-document.getElementById('power').addEventListener('click',()=>{
- active=!active;if(active)ensureAudio();document.getElementById('power').textContent=active?'DEACTIVATE':'ACTIVATE';
- if(active){value=7600;auto=true;hold=false;tone(420,.12,.035,'square')}else{auto=false;hold=false;tone(180,.12,.025,'square')}drawAll();
+document.addEventListener('click', function(event){
+  var button = event.target.closest('button');
+  if(!button) return;
+
+  var id = button.id;
+  var selectedMode = button.getAttribute('data-mode');
+
+  if(id === 'environment'){
+    toggleMicrophone();
+    return;
+  }
+
+  if(id === 'power'){
+    active = !active;
+    if(active){
+      ensureAudio();
+      value = 7600;
+      auto = true;
+      hold = false;
+      document.getElementById('power').textContent = 'DEACTIVATE';
+      tone(420,.12,.035,'square');
+    }else{
+      auto = false;
+      hold = false;
+      document.getElementById('power').textContent = 'ACTIVATE';
+      tone(180,.12,.025,'square');
+    }
+    drawAll();
+    return;
+  }
+
+  if(selectedMode){
+    if(active) selectMode(selectedMode);
+    return;
+  }
+
+  if(id === 'auto'){
+    if(active){ auto=true; hold=false; drawAll(); }
+    return;
+  }
+
+  if(id === 'hold'){
+    if(active){ hold=!hold; drawAll(); }
+    return;
+  }
+
+  if(id === 'up'){
+    if(active){
+      value=clamp(value+250,0,10000);
+      auto=false; hold=false;
+      tone(620,.035,.018,'square');
+      drawAll();
+    }
+    return;
+  }
+
+  if(id === 'down'){
+    if(active){
+      value=clamp(value-250,0,10000);
+      auto=false; hold=false;
+      tone(300,.035,.018,'square');
+      drawAll();
+    }
+  }
 });
-document.getElementById('auto').addEventListener('click',()=>{if(active){auto=true;hold=false;drawAll()}});
-document.getElementById('hold').addEventListener('click',()=>{if(active){hold=!hold;drawAll()}});
-document.getElementById('up').addEventListener('click',()=>{if(active){value=clamp(value+250,0,10000);auto=false;hold=false;tone(620,.035,.018,'square');drawAll()}});
-document.getElementById('down').addEventListener('click',()=>{if(active){value=clamp(value-250,0,10000);auto=false;hold=false;tone(300,.035,.018,'square');drawAll()}});
-document.querySelectorAll('button').forEach(b=>{
- b.addEventListener('pointerdown',()=>b.classList.add('touched'));
- b.addEventListener('pointerup',()=>setTimeout(()=>b.classList.remove('touched'),120));
- b.addEventListener('pointercancel',()=>b.classList.remove('touched'));
- b.addEventListener('pointerleave',()=>{if(!b.matches(':active'))b.classList.remove('touched')});
+
+document.addEventListener('pointerdown', function(event){
+  var button=event.target.closest('button');
+  if(button) button.classList.add('touched');
 });
-modeButtons.forEach(b=>b.addEventListener('click',()=>{if(active)selectMode(b.dataset.mode)}));
+document.addEventListener('pointerup', function(event){
+  var button=event.target.closest('button');
+  if(button) setTimeout(function(){button.classList.remove('touched');},120);
+});
+document.addEventListener('pointercancel', function(event){
+  var button=event.target.closest('button');
+  if(button) button.classList.remove('touched');
+});
+
 
 function tick(){
  if(active&&!hold){
@@ -321,6 +393,6 @@ function tick(){
 setInterval(tick,60);
 drawAll();
 if('serviceWorker' in navigator)navigator.serviceWorker.register('./sw.js').catch(()=>{});
-window.addEventListener('pagehide',()=>toggleMicrophone.cleanup());
+window.addEventListener('pagehide',cleanupMicrophone);
 </script>
 </body>
