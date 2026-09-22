@@ -1,9 +1,1 @@
-{
-  "name": "PKE Field Prototype v3",
-  "short_name": "PKE",
-  "start_url": ".",
-  "display": "standalone",
-  "background_color": "#080909",
-  "theme_color": "#080909",
-  "orientation": "portrait"
-}
+{"name":"PKE Field Analyser Prototype v4","short_name":"PKE v4","start_url":".","display":"standalone","background_color":"#030403","theme_color":"#080b08","orientation":"portrait","icons":[]}

@@ -3,147 +3,206 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
-<meta name="theme-color" content="#080909">
+<meta name="theme-color" content="#080b08">
 <link rel="manifest" href="manifest.json">
-<title>PKE Field Prototype v3</title>
+<title>PKE Field Prototype v4</title>
 <style>
-@font-face{font-family:EurostileLocal;src:local("Eurostile"),local("Eurostile Extended"),local("Microgramma")}
-:root{--bg:#080909;--line:#42605a;--dim:#78918b;--text:#e6ece9;--mono:"Courier New",Courier,monospace;--display:EurostileLocal,"Arial Narrow",sans-serif}
+:root{
+  --green:#73ff73; --yellow:#ffe95a; --red:#ff4b3d; --orange:#ff9b38;
+  --ink:#050705; --panel:#101610; --grid:rgba(115,255,115,.16);
+  --font-tech:"Courier New",Courier,monospace;
+  --font-ui:Eurostile,"Eurostile Extended","Microgramma","Arial Narrow",sans-serif;
+}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-html,body{margin:0;min-height:100%;background:var(--bg);color:var(--text)}
-body{min-height:100svh;display:flex;justify-content:center;overflow:hidden}
-.app{width:min(100%,430px);height:100svh;padding:calc(9px + env(safe-area-inset-top)) 11px calc(10px + env(safe-area-inset-bottom));display:flex;flex-direction:column;gap:8px}
-.top{height:23px;display:flex;justify-content:space-between;align-items:center;font:9px var(--mono);letter-spacing:1.2px;color:#9aa6a3}
-.status{border:1px solid #58635f;padding:3px 5px;border-radius:3px}
-.instrument{position:relative;flex:1;min-height:390px;background:#020303;border:2px solid #3e4745;border-radius:12px;overflow:hidden;box-shadow:inset 0 0 35px #000,0 6px 18px #000}
-.grid{position:absolute;inset:0;background-image:linear-gradient(rgba(90,125,116,.18) 1px,transparent 1px),linear-gradient(90deg,rgba(90,125,116,.18) 1px,transparent 1px);background-size:22px 22px}
-.grid:before{content:"";position:absolute;inset:0;background-image:linear-gradient(rgba(125,165,153,.08) 1px,transparent 1px),linear-gradient(90deg,rgba(125,165,153,.08) 1px,transparent 1px);background-size:110px 110px}
-.scanlines{position:absolute;inset:0;pointer-events:none;background:repeating-linear-gradient(0deg,transparent 0 5px,rgba(255,255,255,.022) 6px)}
-.readout{position:absolute;z-index:10;top:10px;left:10px;right:10px;height:84px;padding:5px 7px;background:rgba(2,3,3,.9);border:1px solid #46504d;text-align:center}
-.number{font:800 clamp(31px,9.7vw,49px) var(--mono);letter-spacing:2px;line-height:1}
-.state{font:9px var(--mono);letter-spacing:1.4px;margin-top:5px}
-.class{font:16px var(--display),var(--mono);letter-spacing:2px;margin-top:4px}
-.modeTag{position:absolute;left:7px;top:7px;font:8px var(--mono);letter-spacing:1px;color:#93a7a1}
-.displayArea{position:absolute;z-index:4;left:9px;right:9px;top:103px;bottom:9px}
-.hidden{display:none!important}
-
-/* DENSITY */
-.densityScale{position:absolute;left:0;top:0;bottom:0;width:22px;border-right:1px solid #53645f;font:7px var(--mono);color:#81918d}
-.densityScale span{position:absolute;left:0}
-.densityScale .s100{top:0}.densityScale .s75{top:25%}.densityScale .s50{top:50%}.densityScale .s25{top:75%}.densityScale .s0{bottom:0}
-.bars{position:absolute;left:30px;right:2px;top:0;bottom:0;display:grid;grid-template-columns:repeat(24,1fr);gap:3px;align-items:end;border-bottom:1px solid #5b6c67}
-.bar{min-height:2px;border:1px solid currentColor;background:currentColor;box-shadow:0 0 6px currentColor;opacity:.82}
-.densityLabel{position:absolute;right:2px;top:-1px;font:8px var(--mono);letter-spacing:1px}
-
-/* VELOCITY */
-.velocityGrid{position:absolute;inset:0;border:1px solid #42504d}
-.velocityGrid:before{content:"";position:absolute;inset:0;background-image:linear-gradient(rgba(110,150,140,.2) 1px,transparent 1px),linear-gradient(90deg,rgba(110,150,140,.2) 1px,transparent 1px);background-size:24px 24px}
-.axisH,.axisV{position:absolute;background:#668078;opacity:.5}.axisH{left:0;right:0;top:50%;height:1px}.axisV{top:0;bottom:0;left:50%;width:1px}
-.steps{position:absolute;inset:0}
-.step{position:absolute;width:10px;height:10px;border:1px solid currentColor;background:currentColor;box-shadow:0 0 7px currentColor}
-.velocityRead{position:absolute;bottom:5px;left:7px;font:11px var(--mono);letter-spacing:1px;background:rgba(0,0,0,.65);padding:3px 5px}
-.velocityHint{position:absolute;top:5px;right:6px;font:8px var(--mono);letter-spacing:1px}
-
-/* DECAY */
-.decay{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;font:9px var(--mono);letter-spacing:1.2px}
-.core{width:112px;height:112px;border:1px solid currentColor;position:relative;display:grid;place-items:center;font:18px var(--display),var(--mono);letter-spacing:2px}
-.core:before,.core:after{content:"";position:absolute;border:1px solid currentColor}
-.core:before{inset:13px}.core:after{inset:31px}
-.core i{position:absolute;width:100%;height:1px;background:currentColor;top:50%;left:0;opacity:.5}.core b{position:absolute;height:100%;width:1px;background:currentColor;left:50%;top:0;opacity:.5}
-.decayRead{font:24px var(--mono);letter-spacing:2px}
-.energy{width:82%;height:17px;border:1px solid currentColor;padding:2px;display:grid;grid-template-columns:repeat(20,1fr);gap:2px}
-.cell{background:currentColor;min-width:0}
-.decayScale{width:82%;display:flex;justify-content:space-between;font-size:7px;color:#879793}
-
-/* CONTROLS */
-.measure{display:grid;grid-template-columns:repeat(3,1fr);gap:7px}
-button{touch-action:manipulation}
-.measure button{height:71px;border:2px solid #424846;border-radius:10px;background:#151716;color:#ddd;font:800 10px var(--display),var(--mono);letter-spacing:1px}
-.measure button small{display:block;margin-top:5px;font:8px var(--mono);letter-spacing:.3px;color:#9da8a5}
-.measure button.active{box-shadow:inset 0 -3px 0 rgba(255,255,255,.32),0 0 14px currentColor}
-.yellow{color:#ffd51a}.red{color:#ff4a4a}.green{color:#4ee879}
-.sub{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
-.sub button{height:45px;border:1px solid #515855;border-radius:8px;background:#141515;color:#eee;font:800 9px var(--display),var(--mono);letter-spacing:.6px}
-.sub button.active{background:#282c2b;border-color:#ddd}
-.power{height:58px;border:2px solid #777;border-radius:10px;background:#151616;color:#fff;font:900 12px var(--display),var(--mono);letter-spacing:2px}
-.power.on{border-color:#e64a4a;box-shadow:0 0 15px rgba(230,70,70,.3)}
-.note{text-align:center;height:11px;color:#68716f;font:7px var(--mono);letter-spacing:.8px}
+html,body{margin:0;width:100%;height:100%;background:#030403;color:var(--green);font-family:var(--font-tech);overflow:hidden}
+body{display:flex;align-items:center;justify-content:center}
+#app{width:min(100vw,430px);height:100dvh;min-height:650px;background:#080b08;display:flex;flex-direction:column;padding:14px 12px env(safe-area-inset-bottom) 12px;gap:9px}
+.top{display:flex;justify-content:space-between;align-items:center;min-height:34px;border:1px solid rgba(115,255,115,.35);padding:5px 8px;letter-spacing:1px}
+.brand{font-family:var(--font-ui);font-size:14px}.status{font-size:11px}
+.readout{border:2px solid currentColor;padding:9px 10px 8px;text-align:center;background:#060906;box-shadow:inset 0 0 20px rgba(115,255,115,.06)}
+.mode-name{font-family:var(--font-ui);font-size:13px;letter-spacing:2px;margin-bottom:3px}
+.value{font-size:34px;line-height:1;font-weight:bold;letter-spacing:3px}
+.units{font-size:10px;opacity:.75;margin-top:4px}
+.screen{position:relative;flex:1;min-height:0;border:2px solid currentColor;background:#050805;overflow:hidden}
+.screen:before{content:"";position:absolute;inset:0;pointer-events:none;background:repeating-linear-gradient(0deg,rgba(255,255,255,.025) 0 1px,transparent 1px 4px)}
+.screen:after{content:"";position:absolute;inset:0;pointer-events:none;background-image:linear-gradient(var(--grid) 1px,transparent 1px),linear-gradient(90deg,var(--grid) 1px,transparent 1px);background-size:25px 25px;opacity:.8}
+.mode{display:none;position:absolute;inset:0;padding:10px;z-index:1}
+.mode.active{display:flex}
+.screen.spd{color:var(--yellow)} .screen.spv{color:var(--red)} .screen.sdr{color:var(--green)}
+/* SPD: three separate banks of full bargraphs */
+.spd.active{flex-direction:column;gap:8px}
+.bank{flex:1;min-height:0;border:1px solid currentColor;position:relative;padding:18px 6px 7px;background:rgba(0,0,0,.18)}
+.bank-title{position:absolute;top:3px;left:6px;font-size:10px;letter-spacing:1px}
+.bars{height:100%;display:grid;grid-template-columns:repeat(12,1fr);align-items:end;gap:3px}
+.bar{height:10%;min-height:2px;background:currentColor;box-shadow:0 0 5px currentColor;transition:height .12s linear}
+.scale{position:absolute;right:4px;top:18px;bottom:7px;font-size:8px;display:flex;flex-direction:column;justify-content:space-between;opacity:.65}
+/* SPV */
+.spv.active{flex-direction:column;gap:8px}
+.vector-panel{flex:1;border:1px solid currentColor;position:relative}
+.vector-grid{position:absolute;inset:8px;display:grid;grid-template-columns:repeat(9,1fr);grid-template-rows:repeat(9,1fr)}
+.cell{border:1px solid rgba(255,75,61,.09)}
+.signal-square{position:absolute;width:16px;height:16px;background:currentColor;box-shadow:0 0 10px currentColor;transform:translate(-50%,-50%)}
+.vector-read{border:1px solid currentColor;padding:8px;font-size:11px;display:flex;justify-content:space-between;letter-spacing:1px}
+/* SDR */
+.sdr.active{flex-direction:column;gap:10px}
+.energy-core{flex:1;border:1px solid currentColor;display:flex;align-items:center;justify-content:center;position:relative}
+.core{width:min(52vw,190px);height:min(52vw,190px);border:4px solid currentColor;display:grid;grid-template-columns:repeat(6,1fr);grid-template-rows:repeat(6,1fr);padding:12px;gap:4px;box-shadow:0 0 18px currentColor}
+.core-cell{border:1px solid currentColor;opacity:.9}
+.decay-stack{border:1px solid currentColor;padding:8px}
+.decay-bars{display:grid;grid-template-columns:repeat(20,1fr);gap:3px;height:35px}
+.decay-bar{background:currentColor;box-shadow:0 0 5px currentColor}
+.decay-label{display:flex;justify-content:space-between;font-size:10px;margin-top:5px}
+.controls{display:grid;grid-template-columns:repeat(4,1fr);gap:7px}
+button{font:12px var(--font-ui);color:#d9ffd9;background:#101610;border:1px solid #5cae5c;border-radius:2px;min-height:44px;letter-spacing:1px}
+button:active{transform:translateY(1px);background:#1a241a}
+button.selected{border-width:2px;box-shadow:inset 0 0 12px rgba(255,255,255,.08)}
+.settings{display:grid;grid-template-columns:repeat(3,1fr);gap:7px}
+.settings button{min-height:48px}
+#spdBtn{color:var(--yellow);border-color:var(--yellow)}
+#spvBtn{color:var(--red);border-color:var(--red)}
+#sdrBtn{color:var(--green);border-color:var(--green)}
+.power{width:100%;min-height:52px;font-size:15px}
+.off .screen,.off .readout{opacity:.35}
+@media(max-height:720px){#app{gap:6px;padding-top:8px}.top{min-height:28px}.value{font-size:29px}.controls button,.settings button{min-height:40px}.power{min-height:46px}}
 </style>
 </head>
 <body>
-<main class="app">
-<div class="top"><span>PKE // FIELD PROTOTYPE 03</span><span id="net" class="status">OFFLINE READY</span></div>
-<section class="instrument" id="instrument">
-<div class="grid"></div><div class="scanlines"></div>
-<div class="readout"><div class="modeTag" id="modeTag">SPD</div><div class="number" id="number">10000.0</div><div class="state" id="state">SYSTEM STANDBY</div><div class="class" id="class">—</div></div>
+<div id="app" class="off">
+  <div class="top"><span class="brand">PKE FIELD ANALYSER</span><span class="status" id="status">STANDBY</span></div>
+  <div class="readout">
+    <div class="mode-name" id="modeName">SYSTEM OFFLINE</div>
+    <div class="value" id="value">00000.0</div>
+    <div class="units">PKE FIELD INDEX</div>
+  </div>
 
-<div class="displayArea" id="densityView">
-<div class="densityScale"><span class="s100">100%</span><span class="s75">75</span><span class="s50">50</span><span class="s25">25</span><span class="s0">0</span></div>
-<div class="bars" id="bars"></div><div class="densityLabel">PARTICLE DENSITY</div>
+  <div class="screen spd" id="screen">
+    <section class="mode spd active" id="spdMode">
+      <div class="bank"><div class="bank-title">PARTICLE DENSITY / PRIMARY</div><div class="bars" id="spdA"></div><div class="scale"><span>HIGH</span><span>50</span><span>0</span></div></div>
+      <div class="bank"><div class="bank-title">PARTICLE DENSITY / SECONDARY</div><div class="bars" id="spdB"></div></div>
+      <div class="bank"><div class="bank-title">FIELD INSTABILITY</div><div class="bars" id="spdC"></div></div>
+    </section>
+
+    <section class="mode spv" id="spvMode">
+      <div class="vector-panel" id="vectorPanel">
+        <div class="vector-grid" id="vectorGrid"></div>
+      </div>
+      <div class="vector-read"><span>DIRECTIONAL VECTOR FIELD</span><span id="vectorText">0.0 / 0°</span></div>
+    </section>
+
+    <section class="mode sdr" id="sdrMode">
+      <div class="energy-core"><div class="core" id="core"></div></div>
+      <div class="decay-stack">
+        <div class="decay-bars" id="decayBars"></div>
+        <div class="decay-label"><span>SPECTRAL ENERGY REMAINING</span><span id="decayText">100%</span></div>
+      </div>
+    </section>
+  </div>
+
+  <div class="settings">
+    <button id="spdBtn" class="selected">SPD</button>
+    <button id="spvBtn">SPV</button>
+    <button id="sdrBtn">SDR</button>
+  </div>
+  <div class="controls">
+    <button id="auto">AUTO</button><button id="hold">HOLD</button><button id="up">UP</button><button id="down">DOWN</button>
+  </div>
+  <button class="power" id="power">ACTIVATE</button>
 </div>
-
-<div class="displayArea hidden" id="velocityView">
-<div class="velocityGrid"><div class="axisH"></div><div class="axisV"></div></div>
-<div class="steps" id="steps"></div><div class="velocityHint">VECTOR FIELD</div><div class="velocityRead" id="velocityRead">SPV 000.0</div>
-</div>
-
-<div class="displayArea hidden" id="decayView">
-<div class="decay"><div>ENTITY ENERGY STATE</div><div class="core" id="core">PKE<i></i><b></b></div><div class="decayRead" id="decayRead">000.0</div><div>SPECTRAL DECAY RATE</div><div class="energy" id="energy"></div><div class="decayScale"><span>STABLE</span><span>ENERGY LOSS</span></div></div>
-</div>
-</section>
-
-<section class="measure">
-<button class="yellow active" data-mode="density">YELLOW<small>SPD · PARTICLE DENSITY</small></button>
-<button class="red" data-mode="velocity">RED<small>SPV · SPECTRAL VELOCITY</small></button>
-<button class="green" data-mode="decay">GREEN<small>SDR · SPECTRAL DECAY</small></button>
-</section>
-<section class="sub"><button id="auto">AUTO</button><button id="hold">HOLD</button><button id="up">▲ UP</button><button id="down">▼ DOWN</button></section>
-<button class="power" id="power">ACTIVATE</button>
-<div class="note">MANUAL SCAN OVERRIDES AUTO · AUTO RESUMES WHEN SELECTED</div>
-</main>
 <script>
-const $=id=>document.getElementById(id);
-let active=false,auto=false,hold=false,mode='density',value=10000,direction=1,velocity=0,decay=0;
-const bars=$('bars'),steps=$('steps'),energy=$('energy');
-for(let i=0;i<24;i++){const b=document.createElement('div');b.className='bar';bars.appendChild(b)}
-for(let i=0;i<20;i++){const c=document.createElement('div');c.className='cell';energy.appendChild(c)}
-for(let i=0;i<7;i++){const s=document.createElement('div');s.className='step';steps.appendChild(s)}
-function sev(){return Math.max(0,Math.min(1,(5000-value)/5000))}
-function className(){if(value>5000)return'NO PKE DETECTED';if(value>3000)return'PKE DETECTED';if(value>=1984)return'CLASS I–II';if(value>=1555)return'CLASS III–IV';if(value>=1333.5)return'CLASS V';if(value>=500)return'CLASS VI';return'CLASS VII'}
-function color(){if(value>3000)return'#d8dfdc';if(value>=1984)return'#4ee879';if(value>=1555)return'#ffd51a';if(value>=1333.5)return'#ff9b18';if(value>=500)return'#ff671c';return'#ff3030'}
+const app=document.getElementById('app'), valueEl=document.getElementById('value'), modeName=document.getElementById('modeName'), statusEl=document.getElementById('status');
+const screen=document.getElementById('screen');
+const modes={SPD:document.getElementById('spdMode'),SPV:document.getElementById('spvMode'),SDR:document.getElementById('sdrMode')};
+const buttons={SPD:document.getElementById('spdBtn'),SPV:document.getElementById('spvBtn'),SDR:document.getElementById('sdrBtn')};
+let active=false, auto=false, hold=false, mode='SPD', value=7600, timer=null, phase=0;
+
+function clamp(v,a,b){return Math.max(a,Math.min(b,v))}
+function severity(){return clamp((5000-value)/5000,0,1)}
+function fmt(v){return v.toFixed(1).padStart(7,'0')}
+function setMode(m){
+  mode=m;
+  Object.entries(modes).forEach(([k,el])=>el.classList.toggle('active',k===m));
+  Object.entries(buttons).forEach(([k,b])=>b.classList.toggle('selected',k===m));
+  screen.className='screen '+m.toLowerCase();
+  modeName.textContent=m==='SPD'?'SPECTRAL PARTICLE DENSITY':m==='SPV'?'SPECTRAL VELOCITY':'SPECTRAL DECAY RATE';
+  render();
+}
 function render(){
- const s=sev(),c=color();
- $('number').textContent=value.toFixed(1).padStart(7,'0');$('class').textContent=className();$('instrument').style.color=c;
- $('state').textContent=!active?'SYSTEM STANDBY':hold?'READING HELD':auto?'AUTO SCAN':'MANUAL SCAN';
- $('modeTag').textContent=mode==='density'?'SPD':mode==='velocity'?'SPV':'SDR';
- $('densityView').classList.toggle('hidden',mode!=='density');$('velocityView').classList.toggle('hidden',mode!=='velocity');$('decayView').classList.toggle('hidden',mode!=='decay');
- if(mode==='density'){
-   [...bars.children].forEach((b,i)=>{const envelope=Math.max(0,Math.sin(i/23*Math.PI));const noise=(Math.random()-.5)*(8+72*s);const wave=Math.sin(i*.78+performance.now()/135)*(3+42*s);b.style.height=Math.max(2,Math.min(100,8+s*45*envelope+wave+noise))+'%';b.style.opacity=.4+s*.6});
- }
- if(mode==='velocity'){
-   const cx=50,cy=50;const magnitude=18+velocity*33;const dx=Math.cos(direction)*magnitude,dy=Math.sin(direction)*magnitude;
-   [...steps.children].forEach((el,i)=>{const t=(i-3)/3;const x=cx+dx*t,y=cy+dy*t;el.style.left=`calc(${x}% - 5px)`;el.style.top=`calc(${y}% - 5px)`;el.style.opacity=.25+.75*(1-Math.abs(t))});
-   $('velocityRead').textContent='SPV '+(velocity*100).toFixed(1).padStart(5,'0');
- }
- if(mode==='decay'){[...energy.children].forEach((x,i)=>x.style.opacity=i/20<(1-decay)?.95:.07);$('decayRead').textContent=(decay*100).toFixed(1).padStart(5,'0');$('core').style.opacity=.3+.7*(1-decay)}
+  valueEl.textContent=fmt(value);
+  if(!active){modeName.textContent='SYSTEM OFFLINE';statusEl.textContent='STANDBY';return}
+  statusEl.textContent=hold?'HOLD':(auto?'AUTO SCAN':'MANUAL');
+  if(mode==='SPD') renderSPD();
+  if(mode==='SPV') renderSPV();
+  if(mode==='SDR') renderSDR();
 }
+function makeBars(id,n=12){
+  const el=document.getElementById(id); el.innerHTML='';
+  for(let i=0;i<n;i++){const b=document.createElement('div');b.className='bar';el.appendChild(b)}
+}
+['spdA','spdB','spdC'].forEach(id=>makeBars(id));
+for(let i=0;i<81;i++){const c=document.createElement('div');c.className='cell';document.getElementById('vectorGrid').appendChild(c)}
+for(let i=0;i<36;i++){const c=document.createElement('div');c.className='core-cell';document.getElementById('core').appendChild(c)}
+for(let i=0;i<20;i++){const b=document.createElement('div');b.className='decay-bar';document.getElementById('decayBars').appendChild(b)}
+for(let i=0;i<7;i++){const s=document.createElement('div');s.className='signal-square';document.getElementById('vectorPanel').appendChild(s)}
+
+function renderSPD(){
+  const s=severity(), ids=['spdA','spdB','spdC'];
+  ids.forEach((id,bank)=>{
+    [...document.getElementById(id).children].forEach((b,i)=>{
+      const wave=Math.sin(i*.72+phase*(1+bank*.25))*0.12;
+      const jitter=(Math.sin(i*2.9+phase*3.1+bank)*.5+.5)*s*.35;
+      const base=(.08+s*(.72-(bank*.08)));
+      const h=clamp((base+wave+jitter)*100,3,100);
+      b.style.height=h+'%';
+    });
+  });
+}
+function renderSPV(){
+  const s=severity(), speed=(s*9.8).toFixed(1), angle=Math.round((phase*28+s*150)%360);
+  document.getElementById('vectorText').textContent=speed+' / '+angle+'°';
+  const squares=document.querySelectorAll('.signal-square');
+  const cx=50,cy=50, rad=12+s*30;
+  squares.forEach((sq,i)=>{
+    const t=(i-3)*.72 + phase*.12;
+    const x=cx+Math.cos(t)*(rad*(i+1)/7);
+    const y=cy+Math.sin(t)*(rad*(i+1)/7);
+    sq.style.left=x+'%';sq.style.top=y+'%';
+    sq.style.opacity=(.35+s*.65)*(1-i*.045);
+    const size=8+s*12+(i%2)*2;
+    sq.style.width=size+'px';sq.style.height=size+'px';
+  });
+}
+function renderSDR(){
+  const s=severity(), remaining=1-s;
+  document.getElementById('decayText').textContent=Math.round(remaining*100)+'%';
+  [...document.getElementById('decayBars').children].forEach((b,i)=>b.style.opacity=i/20<remaining?1:.12);
+  [...document.getElementById('core').children].forEach((c,i)=>{
+    const threshold=(i+1)/36;
+    c.style.opacity=threshold<remaining ? .9 : .08;
+  });
+  document.getElementById('core').style.transform=`scale(${.76+remaining*.24}) rotate(${phase*2}deg)`;
+}
+function step(delta){if(!active)return; hold=false; auto=false; value=clamp(value+delta,0,10000); render()}
 function tick(){
- if(active&&!hold){
-   if(auto)value+=(Math.random()-.57)*230;
-   value=Math.max(0,Math.min(10000,value));
-   const s=sev();velocity=Math.min(1,(.15+Math.abs(Math.sin(performance.now()/760))*.55+Math.random()*.3)*s);
-   direction+=((Math.random()-.5)*.12)*(0.4+s);if(Math.random()<.008)direction+=Math.PI;
-   decay=Math.min(1,s*(.45+.55*Math.random()));render();
- }
- requestAnimationFrame(tick)
+  if(!active||hold||!auto)return;
+  const s=severity();
+  value=clamp(value + (Math.random()-.5)*700 - s*120,0,10000);
+  phase+=.35; render();
 }
-document.querySelectorAll('.measure button').forEach(b=>b.onclick=()=>{mode=b.dataset.mode;document.querySelectorAll('.measure button').forEach(x=>x.classList.remove('active'));b.classList.add('active');render()});
-$('power').onclick=()=>{active=!active;$('power').textContent=active?'DEACTIVATE':'ACTIVATE';$('power').classList.toggle('on',active);if(!active){auto=false;hold=false;value=10000;$('auto').classList.remove('active');$('hold').classList.remove('active')}render()};
-$('auto').onclick=()=>{if(!active)return;auto=!auto;hold=false;$('auto').classList.toggle('active',auto);$('hold').classList.remove('active');render()};
-$('hold').onclick=()=>{if(!active)return;hold=!hold;$('hold').classList.toggle('active',hold);render()};
-$('up').onclick=()=>{if(!active)return;auto=false;hold=false;value=Math.min(10000,value+250);$('auto').classList.remove('active');$('hold').classList.remove('active');render()};
-$('down').onclick=()=>{if(!active)return;auto=false;hold=false;value=Math.max(0,value-250);$('auto').classList.remove('active');$('hold').classList.remove('active');render()};
-window.addEventListener('online',()=>{$('net').textContent='ONLINE'});window.addEventListener('offline',()=>{$('net').textContent='OFFLINE READY'});
-render();tick();if('serviceWorker'in navigator)navigator.serviceWorker.register('sw.js').catch(()=>{});
+document.getElementById('power').onclick=()=>{
+  active=!active;
+  app.classList.toggle('off',!active);
+  document.getElementById('power').textContent=active?'DEACTIVATE':'ACTIVATE';
+  if(active){value=7600;auto=true;hold=false;mode='SPD';setMode('SPD');}
+  else{auto=false;hold=false;render()}
+};
+document.getElementById('auto').onclick=()=>{if(active){auto=true;hold=false;render()}};
+document.getElementById('hold').onclick=()=>{if(active){hold=!hold;render()}};
+document.getElementById('up').onclick=()=>step(250);
+document.getElementById('down').onclick=()=>step(-250);
+Object.entries(buttons).forEach(([m,b])=>b.onclick=()=>{if(active)setMode(m)});
+setInterval(()=>{if(active){phase+=.08;tick();if(!auto&&!hold)render()}},100);
+render();
+if('serviceWorker' in navigator){navigator.serviceWorker.register('./sw.js').catch(()=>{});}
 </script>
-</body></html>
+</body>
+</html>
