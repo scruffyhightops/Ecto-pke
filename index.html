@@ -83,7 +83,7 @@ button.active{background:#182018}
 </head>
 <body>
 <main id="app">
-<header class="header"><span class="title">PKE FIELD ANALYSER / V8</span><span id="status" class="status">STANDBY</span></header>
+<header class="header"><span class="title">PKE FIELD ANALYSER / V9</span><span id="status" class="status">STANDBY</span></header>
 
 <section class="readout">
  <div id="modeTitle" class="modeTitle">SYSTEM OFFLINE</div>
@@ -139,13 +139,17 @@ button.active{background:#182018}
  <button id="auto">AUTO</button><button id="hold">HOLD</button><button id="up">UP</button><button id="down">DOWN</button>
 </nav>
 <button id="power" class="power">ACTIVATE</button>
+<button id="environment" class="power">FIELD INPUT: OFF</button>
 </main>
 
 <script>
 const app=document.getElementById('app'), numberEl=document.getElementById('number'), titleEl=document.getElementById('modeTitle'), statusEl=document.getElementById('status'), audioState=document.getElementById('audioState');
 const views={SPD:document.getElementById('spdView'),SPV:document.getElementById('spvView'),SDR:document.getElementById('sdrView')};
 const modeButtons=[...document.querySelectorAll('.modeButtons button')];
-let active=false,auto=false,hold=false,mode='SPD',value=7600,t=0,frame=0; let audioCtx=null,lastValue=value,lastSound=0;
+const environmentBtn=document.getElementById('environment');
+let active=false,auto=false,hold=false,mode='SPD',value=7600,t=0,frame=0;
+let audioCtx=null,lastValue=value,lastSound=0;
+let micStream=null,micSource=null,analyser=null,micData=null,micActive=false,micLevel=0,micPeak=0,micCentroid=0;
 
 function clamp(v,a,b){return Math.max(a,Math.min(b,v))}
 function sev(){return clamp((5000-value)/5000,0,1)}
@@ -160,8 +164,6 @@ function cls(v){
  return 'CLASS VII';
 }
 function readingColour(v){
- // The displayed reading follows the supplied Ghost Scale:
- // >5000 = no PKE; 5000–3000 = detected; then I–II, III–IV, V, VI, VII.
  if(v>5000)return '#74ff74';
  if(v>=3000)return '#74ff74';
  if(v>=1984)return '#74ff74';
@@ -170,42 +172,21 @@ function readingColour(v){
  if(v>=500)return '#ff9638';
  return '#ff5147';
 }
-function scaleBand(v){
- if(v>5000)return '#74ff74';
- if(v>=3000)return '#74ff74';
- if(v>=1984)return '#74ff74';
- if(v>=1555)return '#ffe45a';
- if(v>=1333.5)return '#ffcc42';
- if(v>=500)return '#ff9638';
- return '#ff5147';
-}
+function scaleBand(v){return readingColour(v)}
 
-function switchTone(){
- try{
-  audioCtx ||= new (window.AudioContext||window.webkitAudioContext)();
-  const o=audioCtx.createOscillator(), g=audioCtx.createGain();
-  o.type='square'; o.frequency.value=mode==='SPD'?520:mode==='SPV'?690:860;
-  g.gain.setValueAtTime(.0001,audioCtx.currentTime);
-  g.gain.exponentialRampToValueAtTime(.035,audioCtx.currentTime+.008);
-  g.gain.exponentialRampToValueAtTime(.0001,audioCtx.currentTime+.07);
-  o.connect(g).connect(audioCtx.destination); o.start(); o.stop(audioCtx.currentTime+.08);
- }catch(e){}
-}
 function ensureAudio(){
  try{
   audioCtx ||= new (window.AudioContext||window.webkitAudioContext)();
   if(audioCtx.state==='suspended') audioCtx.resume();
-  audioState.textContent='AUDIO ACTIVE';
+  audioState.textContent=micActive?'FIELD INPUT ACTIVE':'AUDIO ACTIVE';
   return true;
  }catch(e){audioState.textContent='AUDIO UNAVAILABLE';return false}
 }
 function tone(freq,duration,gain=.025,type='sine'){
  if(!ensureAudio()) return;
- const now=audioCtx.currentTime, o=audioCtx.createOscillator(), g=audioCtx.createGain();
- o.type=type; o.frequency.setValueAtTime(freq,now);
- g.gain.setValueAtTime(.0001,now);
- g.gain.exponentialRampToValueAtTime(gain,now+.008);
- g.gain.exponentialRampToValueAtTime(.0001,now+duration);
+ const now=audioCtx.currentTime,o=audioCtx.createOscillator(),g=audioCtx.createGain();
+ o.type=type;o.frequency.setValueAtTime(freq,now);g.gain.setValueAtTime(.0001,now);
+ g.gain.exponentialRampToValueAtTime(gain,now+.008);g.gain.exponentialRampToValueAtTime(.0001,now+duration);
  o.connect(g).connect(audioCtx.destination);o.start(now);o.stop(now+duration+.01);
 }
 function modeTone(m){
@@ -213,144 +194,133 @@ function modeTone(m){
  setTimeout(()=>tone(m==='SPD'?720:m==='SPV'?390:610,.055,.018,'square'),55);
 }
 function scanTone(){
- if(!active||hold||!auto) return;
- const s=sev();
- // A soft rising/faster pulse as the analyser approaches the entity.
- const interval=900-s*650;
- if(frame-lastSound > interval/100){
-   lastSound=frame;
-   tone(240+s*520,.055,.012,'sine');
- }
+ if(!active||hold||!auto)return;
+ const s=sev(),interval=900-s*650;
+ if(frame-lastSound>interval/60){lastSound=frame;tone(240+s*520,.055,.012,'sine')}
 }
+
 function selectMode(m){
- if(m!==mode){ modeTone(m); }
- mode=m;
+ if(m!==mode)modeTone(m);mode=m;
  Object.entries(views).forEach(([k,v])=>{
-   const on=k===m;
-   v.classList.remove('active');
-   v.setAttribute('aria-hidden', on ? 'false' : 'true');
-   v.style.display=on ? 'flex' : 'none';
-   v.style.visibility=on ? 'visible' : 'hidden';
-   v.style.pointerEvents=on ? 'auto' : 'none';
+  const on=k===m;v.classList.toggle('active',on);v.setAttribute('aria-hidden',on?'false':'true');
+  v.style.display=on?'flex':'none';v.style.visibility=on?'visible':'hidden';v.style.pointerEvents=on?'auto':'none';
  });
- const activeView=views[m];
- activeView.classList.add('active');
- activeView.style.display='flex';
- activeView.style.visibility='visible';
- activeView.style.pointerEvents='auto';
  modeButtons.forEach(b=>b.classList.toggle('active',b.dataset.mode===m));
  titleEl.textContent=m==='SPD'?'SPECTRAL PARTICLE DENSITY':m==='SPV'?'SPECTRAL VELOCITY':'SPECTRAL DECAY RATE';
  drawAll();
 }
 function renderStatus(){
- numberEl.textContent=fmt(value); numberEl.style.color=readingColour(value);
+ numberEl.textContent=fmt(value);numberEl.style.color=readingColour(value);
  statusEl.textContent=!active?'STANDBY':hold?'HOLD':auto?'AUTO SCAN':'MANUAL';
+ environmentBtn.textContent=micActive?'FIELD INPUT: ON':'FIELD INPUT: OFF';
+ environmentBtn.style.color=micActive?'#74ff74':'';
+ audioState.textContent=micActive?'MICROPHONE INPUT ACTIVE':(active?'AUDIO ACTIVE':'AUDIO READY');
 }
-function makeBars(id){
- const el=document.getElementById(id);
- for(let i=0;i<16;i++){const b=document.createElement('div');b.className='bar';el.appendChild(b)}
-}
+function makeBars(id){const el=document.getElementById(id);for(let i=0;i<16;i++){const b=document.createElement('div');b.className='bar';el.appendChild(b)}}
 makeBars('barsA');makeBars('barsB');
 for(let i=0;i<121;i++){const c=document.createElement('div');c.className='cell';document.getElementById('vectorGrid').appendChild(c)}
 for(let i=0;i<9;i++){const s=document.createElement('div');s.className='square';document.getElementById('vectorArea').appendChild(s)}
 
 const canvas=document.getElementById('decayCanvas'),ctx=canvas.getContext('2d');
-function resizeCanvas(){const r=canvas.getBoundingClientRect(),d=devicePixelRatio||1;canvas.width=r.width*d;canvas.height=r.height*d;ctx.setTransform(d,0,0,d,0,0)}
-window.addEventListener('resize',resizeCanvas); resizeCanvas();
+function resizeCanvas(){const r=canvas.getBoundingClientRect(),d=devicePixelRatio||1;canvas.width=Math.max(1,r.width*d);canvas.height=Math.max(1,r.height*d);ctx.setTransform(d,0,0,d,0,0)}
+window.addEventListener('resize',resizeCanvas);resizeCanvas();
 
 function drawSPD(){
- const s=sev(), colour=scaleBand(value);
+ const s=sev(),colour=scaleBand(value);
  ['barsA','barsB'].forEach((id,bank)=>{
   [...document.getElementById(id).children].forEach((b,i)=>{
-   const envelope=.10+s*.84;
-   const wave=Math.sin(i*.72+t*(1+bank*.3))*s*.20;
+   const envelope=.10+s*.84,wave=Math.sin(i*.72+t*(1+bank*.3))*s*.20;
    const instability=(Math.sin(i*2.7+t*2.5+bank*2)*.5+.5)*s*(.22+.14*bank);
-   b.style.height=clamp((envelope+wave+instability)*100,4,100)+'%';
-   b.style.backgroundColor=colour;
-   b.style.boxShadow='none';
+   b.style.height=clamp((envelope+wave+instability)*100,4,100)+'%';b.style.backgroundColor=colour;b.style.boxShadow='none';
   });
  });
  document.getElementById('spdDensity').textContent=(s*100).toFixed(1);
  document.getElementById('spdVariance').textContent=(s*(10+Math.sin(t)*2)).toFixed(1);
  document.getElementById('spdClass').textContent=cls(value);
 }
-
 function drawSPV(){
- const s=sev();
- // Direction is the simulated ENTITY MOVEMENT VECTOR.
- // It changes smoothly rather than behaving like a rotating decorative arrow.
- const dx=Math.cos(t*.42 + s*1.7);
- const dy=Math.sin(t*.31 + s*2.3);
- const dir=(Math.atan2(dy,dx)*180/Math.PI+360)%360;
+ const s=sev(),dx=Math.cos(t*.42+s*1.7),dy=Math.sin(t*.31+s*2.3),dir=(Math.atan2(dy,dx)*180/Math.PI+360)%360;
  const speed=s*10;
- document.getElementById('spvVelocity').textContent=speed.toFixed(1);
- document.getElementById('spvDirection').textContent=String(Math.round(dir)).padStart(3,'0')+'°';
- const squares=document.querySelectorAll('.square');
- const spread=7*(.55+s);
- squares.forEach((q,i)=>{
-   const d=(i-4)*spread;
-   const x=50+dx*d;
-   const y=50+dy*d;
-   q.style.left=x+'%'; q.style.top=y+'%';
-   q.style.width=(8+s*10)+'px'; q.style.height=(8+s*10)+'px';
-   q.style.opacity=.3+s*.7-i*.025;
- });
+ document.getElementById('spvVelocity').textContent=speed.toFixed(1);document.getElementById('spvDirection').textContent=String(Math.round(dir)).padStart(3,'0')+'°';
+ const squares=document.querySelectorAll('.square'),spread=7*(.55+s);
+ squares.forEach((q,i)=>{const d=(i-4)*spread;q.style.left=50+dx*d+'%';q.style.top=50+dy*d+'%';q.style.width=(8+s*10)+'px';q.style.height=(8+s*10)+'px';q.style.opacity=clamp(.3+s*.7-i*.025,.08,1)})
 }
-}
-
 function drawSDR(){
- const s=sev(), rate=.25+s*7.5, loss=s*100;
- document.getElementById('decayRate').textContent=rate.toFixed(2);
- document.getElementById('energyLoss').textContent=loss.toFixed(1)+'%';
- const r=canvas.getBoundingClientRect(),w=r.width,h=r.height;
- ctx.clearRect(0,0,w,h);
+ const s=sev(),rate=.25+s*7.5,loss=s*100;
+ document.getElementById('decayRate').textContent=rate.toFixed(2);document.getElementById('energyLoss').textContent=loss.toFixed(1)+'%';
+ const r=canvas.getBoundingClientRect(),w=r.width,h=r.height;ctx.clearRect(0,0,w,h);
  ctx.strokeStyle='rgba(116,255,116,.18)';ctx.lineWidth=1;
  for(let i=1;i<4;i++){let y=h*i/4;ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(w,y);ctx.stroke()}
  for(let i=1;i<5;i++){let x=w*i/5;ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,h);ctx.stroke()}
- ctx.strokeStyle='#74ff74';ctx.lineWidth=2;ctx.beginPath();
- const decay=0.12+s*1.25;
- for(let x=0;x<=w;x++){
-   const n=x/w;
-   const base=Math.exp(-decay*n);
-   const wobble=(Math.sin(n*24+t*1.5)*.018+Math.sin(n*61+t*2.7)*.009)*(s+.15);
-   const y=(1-clamp(base+wobble,0,1))*(h-4)+2;
-   if(x===0)ctx.moveTo(x,y);else ctx.lineTo(x,y);
- }
- ctx.stroke();
+ ctx.strokeStyle='#74ff74';ctx.lineWidth=2;ctx.beginPath();const decay=.12+s*1.25;
+ for(let x=0;x<=w;x++){const n=x/w,base=Math.exp(-decay*n),wobble=(Math.sin(n*24+t*1.5)*.018+Math.sin(n*61+t*2.7)*.009)*(s+.15),y=(1-clamp(base+wobble,0,1))*(h-4)+2;if(x===0)ctx.moveTo(x,y);else ctx.lineTo(x,y)}ctx.stroke();
 }
+function drawAll(){renderStatus();if(mode==='SPD')drawSPD();else if(mode==='SPV')drawSPV();else drawSDR()}
 
-function drawAll(){renderStatus();if(mode==='SPD')drawSPD();if(mode==='SPV')drawSPV();if(mode==='SDR')drawSDR()}
-
-function tick(){
- if(active && auto && !hold){
-   const s=sev();
-   value=clamp(value+(Math.random()-.5)*1150-s*260-180,0,10000);
+function readMicrophone(){
+ if(!analyser||!micData)return;
+ analyser.getByteTimeDomainData(micData);
+ let sum=0;for(let i=0;i<micData.length;i++){const x=(micData[i]-128)/128;sum+=x*x}
+ const rms=Math.sqrt(sum/micData.length);
+ micLevel=micLevel*.82+rms*.18;micPeak=Math.max(micPeak*.96,rms);
+ const bins=new Uint8Array(analyser.frequencyBinCount);analyser.getByteFrequencyData(bins);
+ let weighted=0,total=0;for(let i=1;i<bins.length;i++){const a=bins[i];total+=a;weighted+=a*i}
+ micCentroid=total?weighted/total/bins.length:0;
+}
+async function toggleMicrophone(){
+ if(micActive){
+  micStream?.getTracks().forEach(track=>track.stop());micStream=null;micSource?.disconnect();micSource=null;analyser=null;micData=null;micActive=false;
+  environmentBtn.textContent='FIELD INPUT: OFF';audioState.textContent=active?'AUDIO ACTIVE':'AUDIO READY';drawAll();return;
  }
- t+=.035; frame++; scanTone();
+ if(!navigator.mediaDevices?.getUserMedia){audioState.textContent='MICROPHONE UNAVAILABLE';return}
+ try{
+  ensureAudio();
+  micStream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:false,noiseSuppression:false,autoGainControl:false}});
+  micSource=audioCtx.createMediaStreamSource(micStream);analyser=audioCtx.createAnalyser();analyser.fftSize=512;analyser.smoothingTimeConstant=.65;micData=new Uint8Array(analyser.fftSize);micSource.connect(analyser);
+  micActive=true;environmentBtn.textContent='FIELD INPUT: ON';audioState.textContent='MICROPHONE INPUT ACTIVE';
+ }catch(e){micActive=false;audioState.textContent='MIC PERMISSION DENIED'}
  drawAll();
 }
-document.getElementById('power').onclick=()=>{
- active=!active;
- if(active) ensureAudio();
- document.getElementById('power').textContent=active?'DEACTIVATE':'ACTIVATE';
- if(active){value=7600;auto=true;hold=false; tone(420,.12,.035,'square');}
- else{auto=false;hold=false; tone(180,.12,.025,'square');}
- drawAll();
-};
-document.getElementById('auto').onclick=()=>{if(active){auto=true;hold=false;drawAll()}};
-document.getElementById('hold').onclick=()=>{if(active){hold=!hold;drawAll()}};
-document.getElementById('up').onclick=()=>{if(active){value=clamp(value+250,0,10000);auto=false;hold=false;tone(620,.035,.018,'square');drawAll()}};
-document.getElementById('down').onclick=()=>{if(active){value=clamp(value-250,0,10000);auto=false;hold=false;tone(300,.035,.018,'square');drawAll()}};
+
+toggleMicrophone.cleanup=()=>{micStream?.getTracks().forEach(track=>track.stop())};
+
+toggleMicrophone;
+environmentBtn.addEventListener('click',toggleMicrophone);
+document.getElementById('power').addEventListener('click',()=>{
+ active=!active;if(active)ensureAudio();document.getElementById('power').textContent=active?'DEACTIVATE':'ACTIVATE';
+ if(active){value=7600;auto=true;hold=false;tone(420,.12,.035,'square')}else{auto=false;hold=false;tone(180,.12,.025,'square')}drawAll();
+});
+document.getElementById('auto').addEventListener('click',()=>{if(active){auto=true;hold=false;drawAll()}});
+document.getElementById('hold').addEventListener('click',()=>{if(active){hold=!hold;drawAll()}});
+document.getElementById('up').addEventListener('click',()=>{if(active){value=clamp(value+250,0,10000);auto=false;hold=false;tone(620,.035,.018,'square');drawAll()}});
+document.getElementById('down').addEventListener('click',()=>{if(active){value=clamp(value-250,0,10000);auto=false;hold=false;tone(300,.035,.018,'square');drawAll()}});
 document.querySelectorAll('button').forEach(b=>{
- b.addEventListener('pointerdown',()=>{b.classList.add('touched')});
- b.addEventListener('pointerup',()=>{setTimeout(()=>b.classList.remove('touched'),120)});
+ b.addEventListener('pointerdown',()=>b.classList.add('touched'));
+ b.addEventListener('pointerup',()=>setTimeout(()=>b.classList.remove('touched'),120));
  b.addEventListener('pointercancel',()=>b.classList.remove('touched'));
  b.addEventListener('pointerleave',()=>{if(!b.matches(':active'))b.classList.remove('touched')});
 });
-modeButtons.forEach(b=>b.onclick=()=>{if(active)selectMode(b.dataset.mode)});
+modeButtons.forEach(b=>b.addEventListener('click',()=>{if(active)selectMode(b.dataset.mode)}));
+
+function tick(){
+ if(active&&!hold){
+  if(micActive){
+   readMicrophone();
+   if(auto){
+    // Ambient sound becomes field excitation: louder/stronger spectral activity drives the reading downward.
+    const excitation=clamp(micLevel*5.8 + micPeak*1.8 + micCentroid*.55,0,1);
+    const target=7600-excitation*7600;
+    value=clamp(value*.82+target*.18,0,10000);
+   }
+  } else if(auto){
+   const s=sev();value=clamp(value+(Math.random()-.5)*1150-s*260-180,0,10000);
+  }
+ }
+ t+=.035;frame++;scanTone();drawAll();
+}
 setInterval(tick,60);
 drawAll();
 if('serviceWorker' in navigator)navigator.serviceWorker.register('./sw.js').catch(()=>{});
+window.addEventListener('pagehide',()=>toggleMicrophone.cleanup());
 </script>
 </body>
-</html>

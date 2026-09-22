@@ -1,1 +1,10 @@
-{"name":"PKE Field Analyser v8","short_name":"PKE v8","start_url":"./index.html?v=8","display":"standalone","background_color":"#070907","theme_color":"#070907","orientation":"portrait"}
+{
+  "name":"PKE Field Analyser",
+  "short_name":"PKE Analyser",
+  "start_url":"./",
+  "display":"standalone",
+  "background_color":"#070907",
+  "theme_color":"#070907",
+  "orientation":"portrait",
+  "icons":[]
+}
