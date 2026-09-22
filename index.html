@@ -63,7 +63,9 @@ body{font-family:var(--tech);display:flex;justify-content:center}
 /* controls */
 .modeButtons{display:grid;grid-template-columns:repeat(3,1fr);gap:7px}
 button{font:12px var(--ui);letter-spacing:1px;color:#d9e8d9;background:#0c100c;border:1px solid #586258;border-radius:1px;min-height:46px}
-button:active{background:#171d17}
+button:active{background:#202820;transform:translateY(1px)}
+button.touched{background:#202820;box-shadow:inset 0 0 0 2px currentColor}
+button.active{background:#182018}
 .modeButtons button[data-mode="SPD"]{color:var(--yellow)}
 .modeButtons button[data-mode="SPV"]{color:var(--red)}
 .modeButtons button[data-mode="SDR"]{color:var(--green)}
@@ -81,7 +83,7 @@ button:active{background:#171d17}
 </head>
 <body>
 <main id="app">
-<header class="header"><span class="title">PKE FIELD ANALYSER / V7</span><span id="status" class="status">STANDBY</span></header>
+<header class="header"><span class="title">PKE FIELD ANALYSER / V8</span><span id="status" class="status">STANDBY</span></header>
 
 <section class="readout">
  <div id="modeTitle" class="modeTitle">SYSTEM OFFLINE</div>
@@ -168,6 +170,16 @@ function readingColour(v){
  if(v>=500)return '#ff9638';
  return '#ff5147';
 }
+function scaleBand(v){
+ if(v>5000)return '#74ff74';
+ if(v>=3000)return '#74ff74';
+ if(v>=1984)return '#74ff74';
+ if(v>=1555)return '#ffe45a';
+ if(v>=1333.5)return '#ffcc42';
+ if(v>=500)return '#ff9638';
+ return '#ff5147';
+}
+
 function switchTone(){
  try{
   audioCtx ||= new (window.AudioContext||window.webkitAudioContext)();
@@ -247,13 +259,15 @@ function resizeCanvas(){const r=canvas.getBoundingClientRect(),d=devicePixelRati
 window.addEventListener('resize',resizeCanvas); resizeCanvas();
 
 function drawSPD(){
- const s=sev();
+ const s=sev(), colour=scaleBand(value);
  ['barsA','barsB'].forEach((id,bank)=>{
   [...document.getElementById(id).children].forEach((b,i)=>{
-   const envelope=.06+s*.82;
-   const wave=Math.sin(i*.72+t*(1+bank*.3))*s*.15;
-   const instability=(Math.sin(i*2.7+t*2.5+bank*2)*.5+.5)*s*(.18+.12*bank);
-   b.style.height=clamp((envelope+wave+instability)*100,3,100)+'%';
+   const envelope=.10+s*.84;
+   const wave=Math.sin(i*.72+t*(1+bank*.3))*s*.20;
+   const instability=(Math.sin(i*2.7+t*2.5+bank*2)*.5+.5)*s*(.22+.14*bank);
+   b.style.height=clamp((envelope+wave+instability)*100,4,100)+'%';
+   b.style.backgroundColor=colour;
+   b.style.boxShadow='none';
   });
  });
  document.getElementById('spdDensity').textContent=(s*100).toFixed(1);
@@ -310,7 +324,7 @@ function drawAll(){renderStatus();if(mode==='SPD')drawSPD();if(mode==='SPV')draw
 function tick(){
  if(active && auto && !hold){
    const s=sev();
-   value=clamp(value+(Math.random()-.5)*650-s*90,0,10000);
+   value=clamp(value+(Math.random()-.5)*1150-s*260-180,0,10000);
  }
  t+=.035; frame++; scanTone();
  drawAll();
@@ -327,8 +341,14 @@ document.getElementById('auto').onclick=()=>{if(active){auto=true;hold=false;dra
 document.getElementById('hold').onclick=()=>{if(active){hold=!hold;drawAll()}};
 document.getElementById('up').onclick=()=>{if(active){value=clamp(value+250,0,10000);auto=false;hold=false;tone(620,.035,.018,'square');drawAll()}};
 document.getElementById('down').onclick=()=>{if(active){value=clamp(value-250,0,10000);auto=false;hold=false;tone(300,.035,.018,'square');drawAll()}};
+document.querySelectorAll('button').forEach(b=>{
+ b.addEventListener('pointerdown',()=>{b.classList.add('touched')});
+ b.addEventListener('pointerup',()=>{setTimeout(()=>b.classList.remove('touched'),120)});
+ b.addEventListener('pointercancel',()=>b.classList.remove('touched'));
+ b.addEventListener('pointerleave',()=>{if(!b.matches(':active'))b.classList.remove('touched')});
+});
 modeButtons.forEach(b=>b.onclick=()=>{if(active)selectMode(b.dataset.mode)});
-setInterval(tick,100);
+setInterval(tick,60);
 drawAll();
 if('serviceWorker' in navigator)navigator.serviceWorker.register('./sw.js').catch(()=>{});
 </script>
