@@ -3,158 +3,147 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
-<meta name="theme-color" content="#090909">
+<meta name="theme-color" content="#080909">
 <link rel="manifest" href="manifest.json">
-<title>PKE Prototype</title>
+<title>PKE Field Prototype v3</title>
 <style>
-:root{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;color:#eee;background:#090909}
+@font-face{font-family:EurostileLocal;src:local("Eurostile"),local("Eurostile Extended"),local("Microgramma")}
+:root{--bg:#080909;--line:#42605a;--dim:#78918b;--text:#e6ece9;--mono:"Courier New",Courier,monospace;--display:EurostileLocal,"Arial Narrow",sans-serif}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-body{margin:0;min-height:100svh;background:radial-gradient(circle at 50% 20%,#292929,#070707 70%);display:flex;justify-content:center;overflow:hidden}
-.app{width:min(100%,430px);min-height:100svh;padding:calc(12px + env(safe-area-inset-top)) 13px calc(13px + env(safe-area-inset-bottom));display:flex;flex-direction:column;gap:10px}
-.header{display:flex;justify-content:space-between;align-items:center;font-size:10px;letter-spacing:2px;color:#aaa}
-.pill{border:1px solid #555;border-radius:5px;padding:5px 7px}
-.display{position:relative;flex:1;min-height:400px;border:3px solid #333;border-radius:18px;background:#020202;box-shadow:inset 0 0 35px #000,0 8px 25px #000;overflow:hidden;padding:14px}
-.scanlines{position:absolute;inset:0;background:repeating-linear-gradient(0deg,transparent 0 5px,rgba(255,255,255,.025) 6px);pointer-events:none}
-.readout{text-align:center;position:relative;z-index:2}
-.number{font-size:clamp(34px,10.5vw,54px);font-weight:800;letter-spacing:3px}
-.state{font-size:11px;letter-spacing:2px;margin-top:2px}
-.class{font-size:17px;letter-spacing:3px;margin-top:7px}
-.visual{position:absolute;inset:112px 13px 20px;display:flex;align-items:flex-end;gap:3px}
-.bar{flex:1;min-width:2px;border-radius:2px 2px 0 0;transition:height .08s ease,opacity .08s}
-.vector{position:absolute;inset:125px 20px 30px;display:grid;place-items:center}
-.vector svg{width:100%;height:100%;overflow:visible}
-.core{position:absolute;width:20px;height:20px;border-radius:50%;border:2px solid #fff;box-shadow:0 0 18px 5px currentColor}
-.decay{position:absolute;inset:130px 35px 35px;display:flex;flex-direction:column;justify-content:center;gap:13px;text-align:center}
-.energy{height:30px;border:2px solid #aaa;padding:3px;display:flex;gap:2px}
-.cell{flex:1;background:#ddd;opacity:.85;transition:opacity .12s}
-.decay-value{font-size:28px;letter-spacing:2px}
-.controls{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
-.measure{height:78px;border:2px solid #444;border-radius:13px;background:#181818;color:#eee;font:inherit;font-weight:800;letter-spacing:1px;box-shadow:inset 0 -5px 10px #000}
-.measure small{display:block;font-size:9px;margin-top:5px;font-weight:400;opacity:.8}
-.measure.active{box-shadow:inset 0 -3px 0 rgba(255,255,255,.35),0 0 14px currentColor}
-.yellow{color:#ffd51a}.red{color:#ff4747}.green{color:#45e86b}
-.subcontrols{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:7px}
-.ctrl{height:49px;border:1px solid #555;border-radius:10px;background:#151515;color:#eee;font:inherit;font-size:11px;font-weight:800}
-.ctrl.active{border-color:#ddd;background:#292929}
-.power{height:62px;border:2px solid #777;border-radius:13px;background:#151515;color:#fff;font:inherit;font-weight:900;letter-spacing:2px}
-.power.on{border-color:#f44;box-shadow:0 0 16px rgba(255,60,60,.35)}
-.hint{text-align:center;color:#777;font-size:9px;letter-spacing:1px}
+html,body{margin:0;min-height:100%;background:var(--bg);color:var(--text)}
+body{min-height:100svh;display:flex;justify-content:center;overflow:hidden}
+.app{width:min(100%,430px);height:100svh;padding:calc(9px + env(safe-area-inset-top)) 11px calc(10px + env(safe-area-inset-bottom));display:flex;flex-direction:column;gap:8px}
+.top{height:23px;display:flex;justify-content:space-between;align-items:center;font:9px var(--mono);letter-spacing:1.2px;color:#9aa6a3}
+.status{border:1px solid #58635f;padding:3px 5px;border-radius:3px}
+.instrument{position:relative;flex:1;min-height:390px;background:#020303;border:2px solid #3e4745;border-radius:12px;overflow:hidden;box-shadow:inset 0 0 35px #000,0 6px 18px #000}
+.grid{position:absolute;inset:0;background-image:linear-gradient(rgba(90,125,116,.18) 1px,transparent 1px),linear-gradient(90deg,rgba(90,125,116,.18) 1px,transparent 1px);background-size:22px 22px}
+.grid:before{content:"";position:absolute;inset:0;background-image:linear-gradient(rgba(125,165,153,.08) 1px,transparent 1px),linear-gradient(90deg,rgba(125,165,153,.08) 1px,transparent 1px);background-size:110px 110px}
+.scanlines{position:absolute;inset:0;pointer-events:none;background:repeating-linear-gradient(0deg,transparent 0 5px,rgba(255,255,255,.022) 6px)}
+.readout{position:absolute;z-index:10;top:10px;left:10px;right:10px;height:84px;padding:5px 7px;background:rgba(2,3,3,.9);border:1px solid #46504d;text-align:center}
+.number{font:800 clamp(31px,9.7vw,49px) var(--mono);letter-spacing:2px;line-height:1}
+.state{font:9px var(--mono);letter-spacing:1.4px;margin-top:5px}
+.class{font:16px var(--display),var(--mono);letter-spacing:2px;margin-top:4px}
+.modeTag{position:absolute;left:7px;top:7px;font:8px var(--mono);letter-spacing:1px;color:#93a7a1}
+.displayArea{position:absolute;z-index:4;left:9px;right:9px;top:103px;bottom:9px}
+.hidden{display:none!important}
+
+/* DENSITY */
+.densityScale{position:absolute;left:0;top:0;bottom:0;width:22px;border-right:1px solid #53645f;font:7px var(--mono);color:#81918d}
+.densityScale span{position:absolute;left:0}
+.densityScale .s100{top:0}.densityScale .s75{top:25%}.densityScale .s50{top:50%}.densityScale .s25{top:75%}.densityScale .s0{bottom:0}
+.bars{position:absolute;left:30px;right:2px;top:0;bottom:0;display:grid;grid-template-columns:repeat(24,1fr);gap:3px;align-items:end;border-bottom:1px solid #5b6c67}
+.bar{min-height:2px;border:1px solid currentColor;background:currentColor;box-shadow:0 0 6px currentColor;opacity:.82}
+.densityLabel{position:absolute;right:2px;top:-1px;font:8px var(--mono);letter-spacing:1px}
+
+/* VELOCITY */
+.velocityGrid{position:absolute;inset:0;border:1px solid #42504d}
+.velocityGrid:before{content:"";position:absolute;inset:0;background-image:linear-gradient(rgba(110,150,140,.2) 1px,transparent 1px),linear-gradient(90deg,rgba(110,150,140,.2) 1px,transparent 1px);background-size:24px 24px}
+.axisH,.axisV{position:absolute;background:#668078;opacity:.5}.axisH{left:0;right:0;top:50%;height:1px}.axisV{top:0;bottom:0;left:50%;width:1px}
+.steps{position:absolute;inset:0}
+.step{position:absolute;width:10px;height:10px;border:1px solid currentColor;background:currentColor;box-shadow:0 0 7px currentColor}
+.velocityRead{position:absolute;bottom:5px;left:7px;font:11px var(--mono);letter-spacing:1px;background:rgba(0,0,0,.65);padding:3px 5px}
+.velocityHint{position:absolute;top:5px;right:6px;font:8px var(--mono);letter-spacing:1px}
+
+/* DECAY */
+.decay{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;font:9px var(--mono);letter-spacing:1.2px}
+.core{width:112px;height:112px;border:1px solid currentColor;position:relative;display:grid;place-items:center;font:18px var(--display),var(--mono);letter-spacing:2px}
+.core:before,.core:after{content:"";position:absolute;border:1px solid currentColor}
+.core:before{inset:13px}.core:after{inset:31px}
+.core i{position:absolute;width:100%;height:1px;background:currentColor;top:50%;left:0;opacity:.5}.core b{position:absolute;height:100%;width:1px;background:currentColor;left:50%;top:0;opacity:.5}
+.decayRead{font:24px var(--mono);letter-spacing:2px}
+.energy{width:82%;height:17px;border:1px solid currentColor;padding:2px;display:grid;grid-template-columns:repeat(20,1fr);gap:2px}
+.cell{background:currentColor;min-width:0}
+.decayScale{width:82%;display:flex;justify-content:space-between;font-size:7px;color:#879793}
+
+/* CONTROLS */
+.measure{display:grid;grid-template-columns:repeat(3,1fr);gap:7px}
+button{touch-action:manipulation}
+.measure button{height:71px;border:2px solid #424846;border-radius:10px;background:#151716;color:#ddd;font:800 10px var(--display),var(--mono);letter-spacing:1px}
+.measure button small{display:block;margin-top:5px;font:8px var(--mono);letter-spacing:.3px;color:#9da8a5}
+.measure button.active{box-shadow:inset 0 -3px 0 rgba(255,255,255,.32),0 0 14px currentColor}
+.yellow{color:#ffd51a}.red{color:#ff4a4a}.green{color:#4ee879}
+.sub{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+.sub button{height:45px;border:1px solid #515855;border-radius:8px;background:#141515;color:#eee;font:800 9px var(--display),var(--mono);letter-spacing:.6px}
+.sub button.active{background:#282c2b;border-color:#ddd}
+.power{height:58px;border:2px solid #777;border-radius:10px;background:#151616;color:#fff;font:900 12px var(--display),var(--mono);letter-spacing:2px}
+.power.on{border-color:#e64a4a;box-shadow:0 0 15px rgba(230,70,70,.3)}
+.note{text-align:center;height:11px;color:#68716f;font:7px var(--mono);letter-spacing:.8px}
 </style>
 </head>
 <body>
 <main class="app">
-  <div class="header"><span>PKE // FIELD PROTOTYPE</span><span id="net" class="pill">OFFLINE READY</span></div>
-  <section class="display" id="display">
-    <div class="scanlines"></div>
-    <div class="readout">
-      <div class="number" id="number">10000.0</div>
-      <div class="state" id="state">SYSTEM STANDBY</div>
-      <div class="class" id="class">—</div>
-    </div>
-    <div class="visual" id="bars"></div>
-    <div class="vector" id="vector" hidden></div>
-    <div class="decay" id="decay" hidden>
-      <div>ENTITY ENERGY</div>
-      <div class="energy" id="energy"></div>
-      <div class="decay-value" id="decayValue">000.0</div>
-      <div>DECAY RATE</div>
-    </div>
-  </section>
+<div class="top"><span>PKE // FIELD PROTOTYPE 03</span><span id="net" class="status">OFFLINE READY</span></div>
+<section class="instrument" id="instrument">
+<div class="grid"></div><div class="scanlines"></div>
+<div class="readout"><div class="modeTag" id="modeTag">SPD</div><div class="number" id="number">10000.0</div><div class="state" id="state">SYSTEM STANDBY</div><div class="class" id="class">—</div></div>
 
-  <section class="controls">
-    <button class="measure yellow active" data-mode="density">YELLOW<small>SPD • PARTICLE DENSITY</small></button>
-    <button class="measure red" data-mode="velocity">RED<small>SPV • SPECTRAL VELOCITY</small></button>
-    <button class="measure green" data-mode="decay">GREEN<small>SDR • SPECTRAL DECAY</small></button>
-  </section>
+<div class="displayArea" id="densityView">
+<div class="densityScale"><span class="s100">100%</span><span class="s75">75</span><span class="s50">50</span><span class="s25">25</span><span class="s0">0</span></div>
+<div class="bars" id="bars"></div><div class="densityLabel">PARTICLE DENSITY</div>
+</div>
 
-  <section class="subcontrols">
-    <button class="ctrl" id="auto">AUTO</button>
-    <button class="ctrl" id="hold">HOLD</button>
-    <button class="ctrl" id="up">▲ UP</button>
-    <button class="ctrl" id="down">▼ DOWN</button>
-  </section>
+<div class="displayArea hidden" id="velocityView">
+<div class="velocityGrid"><div class="axisH"></div><div class="axisV"></div></div>
+<div class="steps" id="steps"></div><div class="velocityHint">VECTOR FIELD</div><div class="velocityRead" id="velocityRead">SPV 000.0</div>
+</div>
 
-  <button class="power" id="power">ACTIVATE</button>
-  <div class="hint">MANUAL SCAN OVERRIDES AUTO • TAP AUTO TO RESUME</div>
+<div class="displayArea hidden" id="decayView">
+<div class="decay"><div>ENTITY ENERGY STATE</div><div class="core" id="core">PKE<i></i><b></b></div><div class="decayRead" id="decayRead">000.0</div><div>SPECTRAL DECAY RATE</div><div class="energy" id="energy"></div><div class="decayScale"><span>STABLE</span><span>ENERGY LOSS</span></div></div>
+</div>
+</section>
+
+<section class="measure">
+<button class="yellow active" data-mode="density">YELLOW<small>SPD · PARTICLE DENSITY</small></button>
+<button class="red" data-mode="velocity">RED<small>SPV · SPECTRAL VELOCITY</small></button>
+<button class="green" data-mode="decay">GREEN<small>SDR · SPECTRAL DECAY</small></button>
+</section>
+<section class="sub"><button id="auto">AUTO</button><button id="hold">HOLD</button><button id="up">▲ UP</button><button id="down">▼ DOWN</button></section>
+<button class="power" id="power">ACTIVATE</button>
+<div class="note">MANUAL SCAN OVERRIDES AUTO · AUTO RESUMES WHEN SELECTED</div>
 </main>
-
 <script>
 const $=id=>document.getElementById(id);
-let active=false, auto=false, hold=false, mode='density', value=10000;
-let direction=0, velocity=0, decay=0;
-const bars=$('bars'), vector=$('vector'), decayBox=$('decay'), energy=$('energy');
-for(let i=0;i<38;i++){const b=document.createElement('div');b.className='bar';bars.appendChild(b)}
+let active=false,auto=false,hold=false,mode='density',value=10000,direction=1,velocity=0,decay=0;
+const bars=$('bars'),steps=$('steps'),energy=$('energy');
+for(let i=0;i<24;i++){const b=document.createElement('div');b.className='bar';bars.appendChild(b)}
 for(let i=0;i<20;i++){const c=document.createElement('div');c.className='cell';energy.appendChild(c)}
-function clamp(n,a,b){return Math.max(a,Math.min(b,n))}
-function severity(){return clamp((5000-value)/5000,0,1)}
-function className(){
- if(value>5000)return 'NO PKE DETECTED';
- if(value>3000)return 'PKE DETECTED';
- if(value>=1984)return 'CLASS I–II';
- if(value>=1555)return 'CLASS III–IV';
- if(value>=1333.5)return 'CLASS V';
- if(value>=500)return 'CLASS VI';
- return 'CLASS VII';
-}
-function colour(){
- if(value>3000)return '#d7d7d7';
- if(value>=1984)return '#45e86b';
- if(value>=1555)return '#ffd51a';
- if(value>=1333.5)return '#ff9a18';
- if(value>=500)return '#ff6418';
- return '#ff3030';
-}
+for(let i=0;i<7;i++){const s=document.createElement('div');s.className='step';steps.appendChild(s)}
+function sev(){return Math.max(0,Math.min(1,(5000-value)/5000))}
+function className(){if(value>5000)return'NO PKE DETECTED';if(value>3000)return'PKE DETECTED';if(value>=1984)return'CLASS I–II';if(value>=1555)return'CLASS III–IV';if(value>=1333.5)return'CLASS V';if(value>=500)return'CLASS VI';return'CLASS VII'}
+function color(){if(value>3000)return'#d8dfdc';if(value>=1984)return'#4ee879';if(value>=1555)return'#ffd51a';if(value>=1333.5)return'#ff9b18';if(value>=500)return'#ff671c';return'#ff3030'}
 function render(){
- $('number').textContent=value.toFixed(1).padStart(7,'0');
- $('class').textContent=className();
- $('display').style.color=colour();
+ const s=sev(),c=color();
+ $('number').textContent=value.toFixed(1).padStart(7,'0');$('class').textContent=className();$('instrument').style.color=c;
  $('state').textContent=!active?'SYSTEM STANDBY':hold?'READING HELD':auto?'AUTO SCAN':'MANUAL SCAN';
+ $('modeTag').textContent=mode==='density'?'SPD':mode==='velocity'?'SPV':'SDR';
+ $('densityView').classList.toggle('hidden',mode!=='density');$('velocityView').classList.toggle('hidden',mode!=='velocity');$('decayView').classList.toggle('hidden',mode!=='decay');
  if(mode==='density'){
-   bars.hidden=false; vector.hidden=true; decayBox.hidden=true;
-   const s=severity();
-   [...bars.children].forEach((b,i)=>{
-     const noise=(Math.random()-0.5)*s*75;
-     const wave=(Math.sin(i*.72+performance.now()/170)*(10+50*s));
-     const h=clamp(12+s*35+wave+noise,3,100);
-     b.style.height=h+'%'; b.style.opacity=.35+s*.65;
-   });
- }else if(mode==='velocity'){
-   bars.hidden=true; vector.hidden=false; decayBox.hidden=true;
-   const ang=direction;
-   const len=35+velocity*105;
-   vector.innerHTML=`<svg viewBox="0 0 100 100">
-   <circle cx="50" cy="50" r="4" fill="currentColor"/>
-   <line x1="50" y1="50" x2="${50+Math.cos(ang)*len/2}" y2="${50+Math.sin(ang)*len/2}" stroke="currentColor" stroke-width="2.2"/>
-   <polygon points="${50+Math.cos(ang)*len/2},${50+Math.sin(ang)*len/2} ${50+Math.cos(ang+2.6)*8+Math.cos(ang)*len/2},${50+Math.sin(ang+2.6)*8+Math.sin(ang)*len/2} ${50+Math.cos(ang-2.6)*8+Math.cos(ang)*len/2},${50+Math.sin(ang-2.6)*8+Math.sin(ang)*len/2}" fill="currentColor"/>
-   <circle cx="50" cy="50" r="${18+velocity*22}" fill="none" stroke="currentColor" opacity=".25" stroke-width="1"/></svg>`;
- }else{
-   bars.hidden=true; vector.hidden=true; decayBox.hidden=false;
-   const d=decay;
-   [...energy.children].forEach((c,i)=>c.style.opacity=i/20<1-d?.95:.08);
-   $('decayValue').textContent=(d*100).toFixed(1).padStart(5,'0');
+   [...bars.children].forEach((b,i)=>{const envelope=Math.max(0,Math.sin(i/23*Math.PI));const noise=(Math.random()-.5)*(8+72*s);const wave=Math.sin(i*.78+performance.now()/135)*(3+42*s);b.style.height=Math.max(2,Math.min(100,8+s*45*envelope+wave+noise))+'%';b.style.opacity=.4+s*.6});
  }
+ if(mode==='velocity'){
+   const cx=50,cy=50;const magnitude=18+velocity*33;const dx=Math.cos(direction)*magnitude,dy=Math.sin(direction)*magnitude;
+   [...steps.children].forEach((el,i)=>{const t=(i-3)/3;const x=cx+dx*t,y=cy+dy*t;el.style.left=`calc(${x}% - 5px)`;el.style.top=`calc(${y}% - 5px)`;el.style.opacity=.25+.75*(1-Math.abs(t))});
+   $('velocityRead').textContent='SPV '+(velocity*100).toFixed(1).padStart(5,'0');
+ }
+ if(mode==='decay'){[...energy.children].forEach((x,i)=>x.style.opacity=i/20<(1-decay)?.95:.07);$('decayRead').textContent=(decay*100).toFixed(1).padStart(5,'0');$('core').style.opacity=.3+.7*(1-decay)}
 }
 function tick(){
  if(active&&!hold){
-   if(auto){ value += (Math.random()-.56)*260; }
-   velocity=clamp(Math.abs((Math.sin(performance.now()/800)+Math.random()*.8)/2)*severity(),0,1);
-   direction += (Math.random()-.48)*.18*(.3+severity());
-   decay=clamp(severity()*(.55+.45*Math.random()),0,1);
-   value=clamp(value,0,10000);
-   render();
+   if(auto)value+=(Math.random()-.57)*230;
+   value=Math.max(0,Math.min(10000,value));
+   const s=sev();velocity=Math.min(1,(.15+Math.abs(Math.sin(performance.now()/760))*.55+Math.random()*.3)*s);
+   direction+=((Math.random()-.5)*.12)*(0.4+s);if(Math.random()<.008)direction+=Math.PI;
+   decay=Math.min(1,s*(.45+.55*Math.random()));render();
  }
- requestAnimationFrame(tick);
+ requestAnimationFrame(tick)
 }
-document.querySelectorAll('.measure').forEach(btn=>btn.onclick=()=>{mode=btn.dataset.mode;document.querySelectorAll('.measure').forEach(x=>x.classList.remove('active'));btn.classList.add('active');render()});
-$('power').onclick=()=>{active=!active;$('power').textContent=active?'DEACTIVATE':'ACTIVATE';$('power').classList.toggle('on',active);if(!active){hold=false;auto=false;$('auto').classList.remove('active');$('hold').classList.remove('active');value=10000}render()};
+document.querySelectorAll('.measure button').forEach(b=>b.onclick=()=>{mode=b.dataset.mode;document.querySelectorAll('.measure button').forEach(x=>x.classList.remove('active'));b.classList.add('active');render()});
+$('power').onclick=()=>{active=!active;$('power').textContent=active?'DEACTIVATE':'ACTIVATE';$('power').classList.toggle('on',active);if(!active){auto=false;hold=false;value=10000;$('auto').classList.remove('active');$('hold').classList.remove('active')}render()};
 $('auto').onclick=()=>{if(!active)return;auto=!auto;hold=false;$('auto').classList.toggle('active',auto);$('hold').classList.remove('active');render()};
 $('hold').onclick=()=>{if(!active)return;hold=!hold;$('hold').classList.toggle('active',hold);render()};
-$('up').onclick=()=>{if(!active)return;auto=false;hold=false;value=clamp(value+250,0,10000);$('auto').classList.remove('active');$('hold').classList.remove('active');render()};
-$('down').onclick=()=>{if(!active)return;auto=false;hold=false;value=clamp(value-250,0,10000);$('auto').classList.remove('active');$('hold').classList.remove('active');render()};
-window.addEventListener('online',()=>{$('net').textContent='ONLINE';});
-window.addEventListener('offline',()=>{$('net').textContent='OFFLINE READY';});
-render();tick();
-if('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(()=>{});
+$('up').onclick=()=>{if(!active)return;auto=false;hold=false;value=Math.min(10000,value+250);$('auto').classList.remove('active');$('hold').classList.remove('active');render()};
+$('down').onclick=()=>{if(!active)return;auto=false;hold=false;value=Math.max(0,value-250);$('auto').classList.remove('active');$('hold').classList.remove('active');render()};
+window.addEventListener('online',()=>{$('net').textContent='ONLINE'});window.addEventListener('offline',()=>{$('net').textContent='OFFLINE READY'});
+render();tick();if('serviceWorker'in navigator)navigator.serviceWorker.register('sw.js').catch(()=>{});
 </script>
-</body>
-</html>
+</body></html>

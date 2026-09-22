@@ -1,10 +1,9 @@
 {
-  "name": "PKE Field Prototype",
+  "name": "PKE Field Prototype v3",
   "short_name": "PKE",
   "start_url": ".",
   "display": "standalone",
-  "background_color": "#090909",
-  "theme_color": "#090909",
-  "orientation": "portrait",
-  "icons": []
+  "background_color": "#080909",
+  "theme_color": "#080909",
+  "orientation": "portrait"
 }
