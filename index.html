@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
 <meta name="theme-color" content="#070907">
 <link rel="manifest" href="manifest.json">
-<title>PKE Field Analyser v13 — Separate Modes</title>
+<title>PKE Field Analyser v14 — Separate Modes</title>
 <style>
 :root{
  --green:#74ff74;--yellow:#ffe45a;--red:#ff5147;--text:#d9e8d9;
@@ -83,7 +83,7 @@ button.active{background:#182018}
 </head>
 <body>
 <main id="app">
-<header class="header"><span class="title">PKE FIELD ANALYSER / V13</span><span id="status" class="status">STANDBY</span></header>
+<header class="header"><span class="title">PKE FIELD ANALYSER / V14</span><span id="status" class="status">STANDBY</span></header>
 
 <section class="readout">
  <div id="modeTitle" class="modeTitle">SYSTEM OFFLINE</div>
@@ -148,7 +148,7 @@ const views={SPD:document.getElementById('spdView'),SPV:document.getElementById(
 const modeButtons=[...document.querySelectorAll('.modeButtons button')];
 const environmentBtn=document.getElementById('environment');
 let active=false,auto=false,hold=false,mode='SPD',value=7600,t=0,frame=0;
-let audioCtx=null,lastValue=value,lastSound=0,sdrEnergy=0,sdrPrevious=0,sdrHistory=[];
+let audioCtx=null,lastValue=value,lastSound=0,sdrEnergy=0,sdrPrevious=0,sdrHistory=[],aweActive=false,aweUntil=0,aweNext=0;
 let micStream=null,micSource=null,analyser=null,micData=null,micActive=false,micLevel=0,micPeak=0,micCentroid=0,micNoiseFloor=0,micSignal=0,micCalibrating=false,micCalibrationUntil=0;
 
 function clamp(v,a,b){return Math.max(a,Math.min(b,v))}
@@ -226,6 +226,13 @@ function resizeCanvas(){const r=canvas.getBoundingClientRect(),d=devicePixelRati
 window.addEventListener('resize',resizeCanvas);resizeCanvas();
 
 function drawSPD(){
+ if(aweActive){
+  document.querySelectorAll('#spdView .bar').forEach(function(bar){
+   bar.style.height=(12+Math.random()*78)+'%';
+   bar.style.background=aweColour(); bar.style.borderColor=aweColour();
+  });
+  return;
+ }
  const s=sev(),colour=scaleBand(value);
  ['barsA','barsB'].forEach((id,bank)=>{
   [...document.getElementById(id).children].forEach((b,i)=>{
@@ -236,9 +243,16 @@ function drawSPD(){
  });
  document.getElementById('spdDensity').textContent=(s*100).toFixed(1);
  document.getElementById('spdVariance').textContent=(s*(10+Math.sin(t)*2)).toFixed(1);
- document.getElementById('spdClass').textContent=(value<500?'VII':value<1333.5?'VI':value<1555?'V':value<1984?'III–IV':'I–II');
+ document.getElementById('spdClass').textContent=aweActive?'ERROR':((value<500?'VII':value<1333.5?'VI':value<1555?'V':value<1984?'III–IV':'I–II'));
 }
 function drawSPV(){
+ if(aweActive){
+  document.querySelectorAll('#vectorArea .signalSquare').forEach(function(sq){
+   sq.style.background=aweColour(); sq.style.borderColor=aweColour();
+   sq.style.transform='translate('+(Math.random()*18-9)+'px,'+(Math.random()*18-9)+'px) scale('+(0.75+Math.random()*.7)+')';
+  });
+  return;
+ }
  const s=sev(),dx=Math.cos(t*.42+s*1.7),dy=Math.sin(t*.31+s*2.3),dir=(Math.atan2(dy,dx)*180/Math.PI+360)%360;
  const speed=s*10;
  document.getElementById('spvVelocity').textContent=speed.toFixed(1);document.getElementById('spvDirection').textContent=String(Math.round(dir)).padStart(3,'0')+'°';
@@ -246,6 +260,19 @@ function drawSPV(){
  squares.forEach((q,i)=>{const d=(i-4)*spread;q.style.left=50+dx*d+'%';q.style.top=50+dy*d+'%';q.style.width=(8+s*10)+'px';q.style.height=(8+s*10)+'px';q.style.opacity=clamp(.3+s*.7-i*.025,.08,1)})
 }
 function drawSDR(){
+ if(aweActive){
+  const r=canvas.getBoundingClientRect(),w=r.width,h=r.height;
+  ctx.clearRect(0,0,w,h); ctx.strokeStyle=aweColour(); ctx.lineWidth=2; ctx.beginPath();
+  for(let i=0;i<=120;i++){
+   const x=i/120*w;
+   const y=h*.5+(Math.sin(i*.41+t*5)+Math.sin(i*.93-t*3.2))*(h*.22)+(Math.random()-.5)*h*.22;
+   if(i===0)ctx.moveTo(x,y);else ctx.lineTo(x,y);
+  }
+  ctx.stroke();
+  document.getElementById('decayRate').textContent='ERR';
+  document.getElementById('energyLoss').textContent='ERR';
+  return;
+ }
  const current=clamp(sev()*.88 + (micActive?micSignal*.72:0),0,1);
  const change=current-sdrPrevious;
  sdrPrevious=current;
@@ -299,6 +326,21 @@ function drawSDR(){
   ctx.beginPath();ctx.arc(x,y,3,0,Math.PI*2);ctx.fill();
  }
 }
+
+function triggerAWE(){
+  aweActive=true;
+  aweUntil=performance.now()+6500+Math.random()*6500;
+  document.getElementById('spdClass').textContent='ERROR';
+  tone(95,.18,.035,'sawtooth');
+}
+function updateAWE(now){
+  if(!aweActive && now>=aweNext && active && Math.random()<0.0018) triggerAWE();
+  if(aweActive && now>=aweUntil){
+    aweActive=false;
+    aweNext=now+18000+Math.random()*26000;
+  }
+}
+function aweColour(){return '#58b9ff';}
 
 function drawAll(){renderStatus();if(mode==='SPD')drawSPD();else if(mode==='SPV')drawSPV();else drawSDR()}
 
@@ -452,6 +494,7 @@ document.addEventListener('pointercancel', function(event){
 
 
 function tick(){
+ const now=performance.now(); updateAWE(now);
  if(active&&!hold){
   if(micActive){
    readMicrophone();
