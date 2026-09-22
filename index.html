@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
 <meta name="theme-color" content="#070907">
 <link rel="manifest" href="manifest.json">
-<title>PKE Field Analyser v12 — Separate Modes</title>
+<title>PKE Field Analyser v13 — Separate Modes</title>
 <style>
 :root{
  --green:#74ff74;--yellow:#ffe45a;--red:#ff5147;--text:#d9e8d9;
@@ -41,7 +41,7 @@ body{font-family:var(--tech);display:flex;justify-content:center}
 
 /* SPV */
 .spv{color:var(--red);flex-direction:column;gap:8px}
-.vectorArea{position:relative;flex:1;border:1px solid currentColor;overflow:hidden;padding-top:18px}.nodeLabel{position:absolute;left:7px;top:5px;font-size:9px;letter-spacing:1px;z-index:3;background:var(--panel);padding-right:5px}
+.vectorArea{position:relative;flex:1;border:1px solid currentColor;overflow:hidden;padding-top:20px}.nodeLabel{z-index:3}
 .vectorGrid{position:absolute;inset:8px;display:grid;grid-template-columns:repeat(11,1fr);grid-template-rows:repeat(11,1fr)}
 .cell{border:1px solid rgba(255,81,71,.11)}
 .square{position:absolute;width:12px;height:12px;background:currentColor;transform:translate(-50%,-50%);opacity:.8}
@@ -83,7 +83,7 @@ button.active{background:#182018}
 </head>
 <body>
 <main id="app">
-<header class="header"><span class="title">PKE FIELD ANALYSER / V12</span><span id="status" class="status">STANDBY</span></header>
+<header class="header"><span class="title">PKE FIELD ANALYSER / V13</span><span id="status" class="status">STANDBY</span></header>
 
 <section class="readout">
  <div id="modeTitle" class="modeTitle">SYSTEM OFFLINE</div>
@@ -99,13 +99,13 @@ button.active{background:#182018}
   <div class="spdFooter">
    <div class="metric">DENSITY<b id="spdDensity">0.0</b></div>
    <div class="metric">VARIANCE<b id="spdVariance">0.0</b></div>
-   <div class="metric">CLASS<b id="spdClass">—</b></div>
+   <div class="metric"><b id="spdClass">—</b></div>
   </div>
  </section>
 
  <!-- SPV SCREEN -->
  <section class="view spv" id="spvView"><div style="position:absolute;right:8px;top:5px;font:9px var(--tech);letter-spacing:1px">MODE 02 / SPV</div>
-  <div class="vectorArea" id="vectorArea"><span class="nodeLabel">NODE / VECTOR FIELD</span>
+  <div class="vectorArea" id="vectorArea"><span class="panelLabel nodeLabel">NODE / VECTOR FIELD</span>
    <div class="vectorGrid" id="vectorGrid"></div>
   </div>
   <div class="spvFooter">
