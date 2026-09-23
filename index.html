@@ -147,6 +147,7 @@ const views={SPD:document.getElementById('spdView'),SPV:document.getElementById(
 const modeButtons=[...document.querySelectorAll('.modeButtons button')];
 const environmentBtn=document.getElementById('environment');
 let active=false,auto=false,hold=false,mode='SPD',value=7600,t=0,frame=0;
+const spdHeights={barsA:Array(16).fill(0.08),barsB:Array(16).fill(0.08)};
 let audioCtx=null,lastValue=value,lastSound=0,sdrEnergy=0,sdrPrevious=0,sdrHistory=[],sdrTraces=[],sdrTraceClock=0,sdrEventCount=0,aweActive=false,aweUntil=0,aweNext=0;
 let micStream=null,micSource=null,analyser=null,micData=null,micActive=false,micLevel=0,micPeak=0,micCentroid=0,micNoiseFloor=0,micSignal=0,micCalibrating=false,micCalibrationUntil=0;
 
@@ -230,15 +231,23 @@ function drawSPD(){
   document.querySelectorAll('#spdView .bar').forEach(function(bar){
    bar.style.height=(12+Math.random()*78)+'%';
    bar.style.background=aweColour(); bar.style.borderColor=aweColour();
+   bar.style.boxShadow='none';
   });
   return;
  }
  const s=sev(),colour=scaleBand(value);
  ['barsA','barsB'].forEach((id,bank)=>{
-  [...document.getElementById(id).children].forEach((b,i)=>{
-   const envelope=.10+s*.84,wave=Math.sin(i*.72+t*(1+bank*.3))*s*.20;
-   const instability=(Math.sin(i*2.7+t*2.5+bank*2)*.5+.5)*s*(.22+.14*bank);
-   b.style.height=clamp((envelope+wave+instability)*100,4,100)+'%';b.style.backgroundColor=colour;b.style.boxShadow='none';
+  const bars=[...document.getElementById(id).children];
+  bars.forEach((b,i)=>{
+   // Three overlapping spectral components give each bar its own response rather than one shared wave.
+   const low=.07+s*.28*(.5+.5*Math.sin(i*.43+t*(.55+bank*.08)));
+   const mid=s*.34*(.5+.5*Math.sin(i*1.17-t*(.9+bank*.13)+bank));
+   const high=s*.32*(.5+.5*Math.sin(i*2.31+t*(1.45+bank*.2)+i*.37));
+   const local=(Math.sin(i*4.9+t*2.7+bank*3.1)*.5+.5)*s*.18;
+   const target=clamp(low+mid+high+local,.045,.98);
+   spdHeights[id][i]+= (target-spdHeights[id][i])*(.16+.10*s);
+   b.style.height=clamp(spdHeights[id][i]*100,4,100)+'%';
+   b.style.backgroundColor=colour;b.style.boxShadow='none';
   });
  });
  document.getElementById('spdDensity').textContent=(s*100).toFixed(1);
