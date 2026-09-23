@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
 <meta name="theme-color" content="#070907">
 <link rel="manifest" href="manifest.json">
-<title>PKE Field Analyser v17 — Spectral Decay Trace Analyser</title>
+<title>PKE Field Analyser v18 — Spectral Decay Trace Analyser</title>
 <style>
 :root{
  --green:#74ff74;--yellow:#ffe45a;--red:#ff5147;--text:#d9e8d9;
@@ -84,7 +84,7 @@ button.active{background:#182018}
 </head>
 <body>
 <main id="app">
-<header class="header"><span class="title">PKE FIELD ANALYSER / V17</span><span id="status" class="status">STANDBY</span></header>
+<header class="header"><span class="title">PKE FIELD ANALYSER / V18</span><span id="status" class="status">STANDBY</span></header>
 
 <section class="readout">
  <div id="modeTitle" class="modeTitle">SYSTEM OFFLINE</div>
@@ -278,7 +278,7 @@ function initSDRTraces(){
       attack:.24+Math.random()*.14,
       age:Math.random()*4,
       active:false,
-      history:[]
+      history:Array.from({length:180},()=>0.018+Math.random()*.012)
     });
   }
 }
@@ -298,13 +298,15 @@ function updateSDRTraces(dt){
   const field=clamp(sev()*.9+(micActive?micSignal*.65:0),0,1);
   sdrTraceClock+=dt;
 
-  // The analyser watches for discrete spectral events rather than drawing one generic curve.
-  if(field>.035 && sdrTraceClock>0.18){
-    const chance=.10+field*.22;
+  // The analyser always has a low-level spectral baseline. Higher PKE values
+  // increase the frequency and amplitude of discrete decay events.
+  const eventInterval=.42-field*.25;
+  if(sdrTraceClock>eventInterval){
+    const chance=.72+field*.25;
     if(Math.random()<chance){
       const available=sdrTraces.filter(tr=>!tr.active || tr.level<.08);
       const tr=available.length?available[Math.floor(Math.random()*available.length)]:sdrTraces[Math.floor(Math.random()*sdrTraces.length)];
-      spawnSDREvent(tr,clamp(.16+field*.78+Math.random()*.16,0,1));
+      spawnSDREvent(tr,clamp(.045+field*.78+Math.random()*.16,0,1));
       sdrTraceClock=0;
     }
   }
