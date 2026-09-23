@@ -84,7 +84,7 @@ button.active{background:#182018}
 </head>
 <body>
 <main id="app">
-<header class="header"><span class="title">PKE FIELD ANALYSER / V28</span><span id="status" class="status">STANDBY</span></header>
+<header class="header"><span class="title">PKE FIELD ANALYSER / V26</span><span id="status" class="status">STANDBY</span></header>
 
 <section class="readout">
  <div id="modeTitle" class="modeTitle">SYSTEM OFFLINE</div>
@@ -220,7 +220,7 @@ function renderStatus(){
 function makeBars(id){const el=document.getElementById(id);for(let i=0;i<16;i++){const b=document.createElement('div');b.className='bar';el.appendChild(b)}}
 makeBars('barsA');makeBars('barsB');
 for(let i=0;i<121;i++){const c=document.createElement('div');c.className='cell';document.getElementById('vectorGrid').appendChild(c)}
-for(let i=0;i<12;i++){const s=document.createElement('div');s.className='square';document.getElementById('vectorArea').appendChild(s)}
+for(let i=0;i<9;i++){const s=document.createElement('div');s.className='square';document.getElementById('vectorArea').appendChild(s)}
 
 const canvas=document.getElementById('decayCanvas'),ctx=canvas.getContext('2d');
 function resizeCanvas(){const r=canvas.getBoundingClientRect(),d=devicePixelRatio||1;canvas.width=Math.max(1,r.width*d);canvas.height=Math.max(1,r.height*d);ctx.setTransform(d,0,0,d,0,0)}
@@ -280,32 +280,12 @@ function drawSPV(){
   });
   return;
  }
- const s=sev();
- // Normal SPV is a moving vector stream: nodes travel through a shared
- // direction, but each node follows a slightly different curved path.
- const angle=t*(.34+.42*s)+Math.sin(t*.17)*(.22+.35*s);
- const dx=Math.cos(angle),dy=Math.sin(angle),perpX=-dy,perpY=dx;
- const dir=(Math.atan2(dy,dx)*180/Math.PI+360)%360;
- const speed=clamp(1.8+s*10,1.8,11.8);
- document.getElementById('spvVelocity').textContent=speed.toFixed(1);
- document.getElementById('spvDirection').textContent=String(Math.round(dir)).padStart(3,'0')+'°';
- const squares=document.querySelectorAll('.square');
- squares.forEach((q,i)=>{
-   const u=i/(squares.length-1)-.5;
-   const phase=t*(.75+.85*s)+i*.48;
-   const travel=Math.sin(phase)*(.12+.18*s)+u*(12+22*s);
-   const lateral=Math.sin(phase*1.27+i*.73)*(2.5+10*s);
-   const x=50+dx*travel*2.15+perpX*lateral;
-   const y=50+dy*travel*1.65+perpY*lateral;
-   const size=7+s*7+Math.sin(phase*1.4+i)*1.4;
-   const opacity=clamp(.18+s*.72+Math.sin(phase+i)*.12-Math.abs(u)*.16,.10,1);
-   q.style.left=clamp(x,5,95)+'%';
-   q.style.top=clamp(y,8,92)+'%';
-   q.style.width=Math.max(5,size)+'px';q.style.height=Math.max(5,size)+'px';
-   q.style.opacity=opacity.toFixed(2);
-   q.style.background='currentColor';q.style.borderColor='transparent';
-   q.style.transform='translate(-50%,-50%) rotate('+(angle*57.2958+Math.sin(phase)*18).toFixed(1)+'deg)';
- })
+ const s=sev(),dx=Math.cos(t*.42+s*1.7),dy=Math.sin(t*.31+s*2.3),dir=(Math.atan2(dy,dx)*180/Math.PI+360)%360;
+ const speed=s*10;
+ document.getElementById('spvVelocity').textContent=speed.toFixed(1);document.getElementById('spvDirection').textContent=String(Math.round(dir)).padStart(3,'0')+'°';
+ const squares=document.querySelectorAll('.square'),spread=7*(.55+s);
+ squares.forEach((q,i)=>{const d=(i-4)*spread;q.style.left=50+dx*d+'%';q.style.top=50+dy*d+'%';q.style.width=(8+s*10)+'px';q.style.height=(8+s*10)+'px';q.style.opacity=clamp(.3+s*.7-i*.025,.08,1);q.style.background='currentColor';q.style.borderColor='transparent'})
+}
 function initSDRTraces(){
   sdrTraces=[];
   const points=220;
