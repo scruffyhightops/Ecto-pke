@@ -245,7 +245,7 @@ function drawSPD(){
  document.getElementById('spdVariance').textContent=(s*(10+Math.sin(t)*2)).toFixed(1);
  document.getElementById('spdClass').textContent=aweActive?'ERROR':
   value>=5000?'NO PKE':
-  value>=3000?'PKE DETECTED':
+  value>=3000?'PKE DETECT':
   value>=1984?'I–II':
   value>=1555?'III–IV':
   value>=1333.5?'V':
@@ -373,25 +373,33 @@ function drawSDR(){
   let totalDecay=0,decaySamples=0;
 
   sdrTraces.forEach((tr,ti)=>{
-    const n=tr.history.length;
-    if(n<2)return;
+    const amp=clamp(.10 + tr.level*.72 + sev()*.12, .08, .92);
+    const decayLength=clamp(.20 + tr.decay*1.9 + ti*.035, .16, .52);
+    const baseline=h-(10+ti*2);
     ctx.strokeStyle='#74ff74';
     ctx.globalAlpha=.58+ti*.08;
     ctx.lineWidth=ti===0?2:1.4;
     ctx.beginPath();
-    for(let i=0;i<n;i++){
-      const x=i/(n-1)*w;
-      const v=tr.history[i];
-      const ripple=(Math.sin(i*.27+tr.phase+t*1.7)*.012)*(0.35+v);
-      const y=(1-clamp(v+ripple,0,1))*(h-4)+2;
-      if(i===0)ctx.moveTo(x,y);else ctx.lineTo(x,y);
+    for(let i=0;i<=180;i++){
+      const x=i/180*w;
+      const p=i/180;
+      // Every trace originates on the ZERO line at the left edge,
+      // then rises into a spectral event and decays across the analyser.
+      const rise=1-Math.exp(-p*18);
+      const envelope=amp*rise*Math.exp(-p/decayLength);
+      const ripple=Math.sin(i*.27+tr.phase+t*1.7)*.012*(.35+envelope);
+      const y=baseline-envelope*(h-16)+ripple*h;
+      if(i===0)ctx.moveTo(x,baseline);else ctx.lineTo(x,y);
     }
     ctx.stroke();
     ctx.globalAlpha=1;
 
     if(tr.active){
-      const y=(1-clamp(tr.level,0,1))*(h-4)+2;
-      ctx.fillStyle='#74ff74';ctx.beginPath();ctx.arc(w-1,y,2.8,0,Math.PI*2);ctx.fill();
+      const p=clamp(.04+tr.age*.10,0,1);
+      const rise=1-Math.exp(-p*18);
+      const envelope=amp*rise*Math.exp(-p/decayLength);
+      const y=baseline-envelope*(h-16);
+      ctx.fillStyle='#74ff74';ctx.beginPath();ctx.arc(w*p,y,2.8,0,Math.PI*2);ctx.fill();
     }
 
     if(tr.history.length>10){
