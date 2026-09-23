@@ -278,7 +278,11 @@ function initSDRTraces(){
       active:false,
       history:Array.from({length:180},(_,j)=>{
         const x=j/179;
-        return .025 + Math.exp(-x*(1.4+i*.16))*(.07+i*.018) + Math.sin(x*12+i)*.008;
+        // Start exactly on the zero line at the left edge, then introduce a
+        // spectral event and let it decay across the full analyser width.
+        const rise=Math.min(1,x/.07);
+        const envelope=rise*Math.exp(-x*(1.35+i*.16))*(.16+i*.035);
+        return clamp(envelope + Math.sin(x*12+i)*.008*rise,0,1);
       })
     });
   }
@@ -286,9 +290,10 @@ function initSDRTraces(){
 initSDRTraces();
 
 function spawnSDREvent(trace,energy){
-  trace.level=clamp(energy,0,1);
-  trace.target=trace.level;
+  trace.level=0;
+  trace.target=clamp(energy,0,1);
   trace.age=0;
+  trace.history=Array.from({length:180},()=>0);
   trace.active=true;
   trace.decay=.07+Math.random()*.11;
   trace.attack=.28+Math.random()*.18;
