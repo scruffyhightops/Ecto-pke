@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
 <meta name="theme-color" content="#070907">
 <link rel="manifest" href="manifest.json">
-<title>PKE Field Analyser v24 — Spectral Decay Trace Analyser</title>
+<title>PKE Field Analyser v26 — Spectral Decay Trace Analyser</title>
 <style>
 :root{
  --green:#74ff74;--yellow:#ffe45a;--red:#ff5147;--text:#d9e8d9;
@@ -84,7 +84,7 @@ button.active{background:#182018}
 </head>
 <body>
 <main id="app">
-<header class="header"><span class="title">PKE FIELD ANALYSER / V24</span><span id="status" class="status">STANDBY</span></header>
+<header class="header"><span class="title">PKE FIELD ANALYSER / V26</span><span id="status" class="status">STANDBY</span></header>
 
 <section class="readout">
  <div id="modeTitle" class="modeTitle">SYSTEM OFFLINE</div>
@@ -279,34 +279,33 @@ function drawSPV(){
 }
 function initSDRTraces(){
   sdrTraces=[];
+  const points=220;
   for(let i=0;i<4;i++){
     sdrTraces.push({
-      level:.08+Math.random()*.10,
-      target:.18+Math.random()*.18,
+      history:Array(points).fill(0),
+      cursor:0,
+      level:0,
+      target:0,
       phase:Math.random()*Math.PI*2,
       decay:.07+Math.random()*.05,
       attack:.22+Math.random()*.12,
-      age:Math.random()*2,
+      age:0,
       active:false,
-      history:Array.from({length:180},(_,j)=>{
-        const x=j/179;
-        // Start exactly on the zero line at the left edge, then introduce a
-        // spectral event and let it decay across the full analyser width.
-        const rise=Math.min(1,x/.07);
-        const envelope=rise*Math.exp(-x*(1.35+i*.16))*(.16+i*.035);
-        return clamp(envelope + Math.sin(x*12+i)*.008*rise,0,1);
-      })
+      completed:false,
+      points
     });
   }
 }
 initSDRTraces();
 
 function spawnSDREvent(trace,energy){
+  trace.history.fill(0);
+  trace.cursor=0;
   trace.level=0;
   trace.target=clamp(energy,0,1);
   trace.age=0;
-  trace.history=Array.from({length:180},()=>0);
   trace.active=true;
+  trace.completed=false;
   trace.decay=.07+Math.random()*.11;
   trace.attack=.28+Math.random()*.18;
   sdrEventCount++;
@@ -316,30 +315,47 @@ function updateSDRTraces(dt){
   const field=clamp(sev()*.9+(micActive?micSignal*.65:0),0,1);
   sdrTraceClock+=dt;
 
-  // SDR always generates a visible stream of spectral events. PKE level changes
-  // their amplitude and frequency, while each event still follows its own decay.
-  const eventInterval=Math.max(.24,.72-field*.40);
+  // Start a new trace when a slot is free. Each trace is a true left-to-right
+  // time history: the newest sample is written at the current cursor position.
+  const eventInterval=Math.max(.34,.82-field*.42);
   if(sdrTraceClock>=eventInterval){
-    const available=sdrTraces.filter(tr=>!tr.active || tr.level<.10);
-    const tr=available.length?available[Math.floor(Math.random()*available.length)]:sdrTraces[Math.floor(Math.random()*sdrTraces.length)];
+    const available=sdrTraces.filter(tr=>!tr.active);
+    const tr=available.length
+      ? available[Math.floor(Math.random()*available.length)]
+      : sdrTraces[Math.floor(Math.random()*sdrTraces.length)];
     spawnSDREvent(tr,clamp(.10+field*.70+Math.random()*.14,0,1));
     sdrTraceClock=0;
   }
 
   sdrTraces.forEach((tr,i)=>{
-    if(!tr.active){
-      // Maintain a very small live baseline instead of dropping to zero.
-      tr.level=Math.max(.018,tr.level*.985);
+    if(!tr.active)return;
+
+    tr.age+=dt;
+    if(tr.age<.18){
+      tr.level += (tr.target-tr.level)*tr.attack;
     }else{
-      tr.age+=dt;
-      if(tr.age<.18) tr.level += (tr.target-tr.level)*tr.attack;
-      else tr.level += (0-tr.level)*tr.decay*.055;
-      tr.level=clamp(tr.level,0,1);
-      if(tr.level<.018 && tr.age>1.5) tr.active=false;
+      tr.level += (0-tr.level)*tr.decay*.055;
+    }
+    tr.level=clamp(tr.level,0,1);
+
+    // One new measurement point is committed at each animation step. The
+    // first point is always ZERO at the lower-left of the analyser.
+    const ripple=Math.sin(tr.cursor*.27+tr.phase+t*1.7)*.012;
+    tr.history[tr.cursor]=clamp(tr.level+ripple,0,1);
+    tr.cursor++;
+
+    // Once the trace reaches the right edge, keep the newest data at the right
+    // and scroll the older history left by one point.
+    if(tr.cursor>=tr.points){
+      tr.history.shift();
+      tr.history.push(clamp(tr.level,0,1));
+      tr.cursor=tr.points-1;
     }
 
-    tr.history.push(tr.level);
-    if(tr.history.length>180)tr.history.shift();
+    if(tr.level<.018 && tr.age>1.5){
+      tr.active=false;
+      tr.completed=true;
+    }
   });
 
   sdrPrevious=field;
@@ -365,7 +381,8 @@ function drawSDR(){
   }
 
   if(aweActive){
-    // AWE breaks the expected decay model: traces can rise, reverse, split and disappear.
+    // AWE breaks the expected decay model: the live trace becomes unstable
+    // while still respecting the analyser's left-to-right time direction.
     for(let tr=0;tr<sdrTraces.length;tr++){
       ctx.strokeStyle=aweColour();ctx.lineWidth=tr===0?2:1.5;ctx.beginPath();
       for(let i=0;i<=180;i++){
@@ -385,38 +402,37 @@ function drawSDR(){
   let totalDecay=0,decaySamples=0;
 
   sdrTraces.forEach((tr,ti)=>{
-    const amp=clamp(.10 + tr.level*.72 + sev()*.12, .08, .92);
-    const decayLength=clamp(.20 + tr.decay*1.9 + ti*.035, .16, .52);
     const baseline=h-(10+ti*2);
     ctx.strokeStyle='#74ff74';
     ctx.globalAlpha=.58+ti*.08;
     ctx.lineWidth=ti===0?2:1.4;
     ctx.beginPath();
-    for(let i=0;i<=180;i++){
-      const x=i/180*w;
-      const p=i/180;
-      // Every trace originates on the ZERO line at the left edge,
-      // then rises into a spectral event and decays across the analyser.
-      const rise=1-Math.exp(-p*18);
-      const envelope=amp*rise*Math.exp(-p/decayLength);
-      const ripple=Math.sin(i*.27+tr.phase+t*1.7)*.012*(.35+envelope);
-      const y=baseline-envelope*(h-16)+ripple*h;
+
+    // Draw only the committed history. x=0 is always the ZERO origin; newer
+    // samples progress toward the right edge. Once full, history scrolls left.
+    for(let i=0;i<tr.points;i++){
+      const x=i/(tr.points-1)*w;
+      const sample=clamp(tr.history[i],0,1);
+      const y=baseline-sample*(h-16);
       if(i===0)ctx.moveTo(x,baseline);else ctx.lineTo(x,y);
     }
     ctx.stroke();
     ctx.globalAlpha=1;
 
+    // Mark the live write position so the direction is visually obvious.
+    const liveIndex=Math.min(tr.cursor,tr.points-1);
+    const liveX=liveIndex/(tr.points-1)*w;
+    const liveSample=tr.history[liveIndex]||0;
+    const liveY=baseline-liveSample*(h-16);
     if(tr.active){
-      const p=clamp(.04+tr.age*.10,0,1);
-      const rise=1-Math.exp(-p*18);
-      const envelope=amp*rise*Math.exp(-p/decayLength);
-      const y=baseline-envelope*(h-16);
-      ctx.fillStyle='#74ff74';ctx.beginPath();ctx.arc(w*p,y,2.8,0,Math.PI*2);ctx.fill();
+      ctx.fillStyle='#74ff74';
+      ctx.beginPath();ctx.arc(liveX,liveY,2.8,0,Math.PI*2);ctx.fill();
     }
 
-    if(tr.history.length>10){
-      const recent=tr.history[tr.history.length-1];
-      const older=tr.history[Math.max(0,tr.history.length-8)];
+    // Calculate decay from the most recent committed samples.
+    if(tr.cursor>8){
+      const recent=tr.history[Math.max(0,tr.cursor-1)];
+      const older=tr.history[Math.max(0,tr.cursor-8)];
       if(recent<older){totalDecay+=older-recent;decaySamples++;}
     }
   });
