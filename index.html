@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
 <meta name="theme-color" content="#070907">
 <link rel="manifest" href="manifest.json">
-<title>PKE Field Analyser v14 — Separate Modes</title>
+<title>PKE Field Analyser v17 — Spectral Decay Trace Analyser</title>
 <style>
 :root{
  --green:#74ff74;--yellow:#ffe45a;--red:#ff5147;--text:#d9e8d9;
@@ -48,7 +48,7 @@ body{font-family:var(--tech);display:flex;justify-content:center}
 .spvFooter{display:grid;grid-template-columns:1fr 1fr;gap:7px}
 .spvMetric{border:1px solid currentColor;padding:7px;font-size:9px}.spvMetric b{display:block;font-size:15px;margin-top:3px}
 
-/* SDR */
+/* SDR / SPECTRAL DECAY TRACE ANALYSER */
 .sdr{color:var(--green);flex-direction:column;gap:8px}
 .curvePanel{flex:1;min-height:0;border:1px solid currentColor;position:relative;padding:26px 10px 22px 38px}
 .axisY,.axisX{position:absolute;font-size:8px;opacity:.7}
@@ -57,6 +57,7 @@ body{font-family:var(--tech);display:flex;justify-content:center}
 .yLabels{position:absolute;left:5px;top:26px;bottom:23px;display:flex;flex-direction:column;justify-content:space-between;font-size:7px;opacity:.55}
 .xTicks{position:absolute;left:38px;right:10px;bottom:6px;display:flex;justify-content:space-between;font-size:7px;opacity:.5}
 #decayCanvas{position:absolute;left:38px;right:10px;top:26px;bottom:22px;width:calc(100% - 48px);height:calc(100% - 48px)}
+.sdrLegend{position:absolute;right:7px;top:5px;font-size:7px;letter-spacing:.7px;opacity:.6}
 .sdrFooter{display:grid;grid-template-columns:1fr 1fr;gap:7px}
 .sdrMetric{border:1px solid currentColor;padding:7px;font-size:9px}.sdrMetric b{display:block;font-size:15px;margin-top:3px}
 
@@ -83,7 +84,7 @@ button.active{background:#182018}
 </head>
 <body>
 <main id="app">
-<header class="header"><span class="title">PKE FIELD ANALYSER / V14</span><span id="status" class="status">STANDBY</span></header>
+<header class="header"><span class="title">PKE FIELD ANALYSER / V17</span><span id="status" class="status">STANDBY</span></header>
 
 <section class="readout">
  <div id="modeTitle" class="modeTitle">SYSTEM OFFLINE</div>
@@ -117,7 +118,8 @@ button.active{background:#182018}
  <!-- SDR SCREEN -->
  <section class="view sdr" id="sdrView"><div style="position:absolute;right:8px;top:5px;font:9px var(--tech);letter-spacing:1px">MODE 03 / SDR</div>
   <div class="curvePanel">
-   <div class="axisY">PKE ENERGY</div>
+   <div class="sdrLegend">LIVE / TRACE HISTORY</div>
+   <div class="axisY">SPECTRAL ENERGY</div>
    <div class="axisX">TIME / SECONDS</div>
    <div class="yLabels"><span>100</span><span>75</span><span>50</span><span>25</span><span>0</span></div>
    <div class="xTicks"><span>0</span><span>2</span><span>4</span><span>6</span><span>8</span><span>10</span></div>
@@ -148,7 +150,7 @@ const views={SPD:document.getElementById('spdView'),SPV:document.getElementById(
 const modeButtons=[...document.querySelectorAll('.modeButtons button')];
 const environmentBtn=document.getElementById('environment');
 let active=false,auto=false,hold=false,mode='SPD',value=7600,t=0,frame=0;
-let audioCtx=null,lastValue=value,lastSound=0,sdrEnergy=0,sdrPrevious=0,sdrHistory=[],aweActive=false,aweUntil=0,aweNext=0;
+let audioCtx=null,lastValue=value,lastSound=0,sdrEnergy=0,sdrPrevious=0,sdrHistory=[],sdrTraces=[],sdrTraceClock=0,sdrEventCount=0,aweActive=false,aweUntil=0,aweNext=0;
 let micStream=null,micSource=null,analyser=null,micData=null,micActive=false,micLevel=0,micPeak=0,micCentroid=0,micNoiseFloor=0,micSignal=0,micCalibrating=false,micCalibrationUntil=0;
 
 function clamp(v,a,b){return Math.max(a,Math.min(b,v))}
@@ -265,72 +267,138 @@ function drawSPV(){
  const squares=document.querySelectorAll('.square'),spread=7*(.55+s);
  squares.forEach((q,i)=>{const d=(i-4)*spread;q.style.left=50+dx*d+'%';q.style.top=50+dy*d+'%';q.style.width=(8+s*10)+'px';q.style.height=(8+s*10)+'px';q.style.opacity=clamp(.3+s*.7-i*.025,.08,1);q.style.background='currentColor';q.style.borderColor='transparent'})
 }
-function drawSDR(){
- if(aweActive){
-  const r=canvas.getBoundingClientRect(),w=r.width,h=r.height;
-  ctx.clearRect(0,0,w,h); ctx.strokeStyle=aweColour(); ctx.lineWidth=2; ctx.beginPath();
-  for(let i=0;i<=120;i++){
-   const x=i/120*w;
-   const y=h*.5+(Math.sin(i*.41+t*5)+Math.sin(i*.93-t*3.2))*(h*.22)+(Math.random()-.5)*h*.22;
-   if(i===0)ctx.moveTo(x,y);else ctx.lineTo(x,y);
+function initSDRTraces(){
+  sdrTraces=[];
+  for(let i=0;i<4;i++){
+    sdrTraces.push({
+      level:0,
+      target:0,
+      phase:Math.random()*Math.PI*2,
+      decay:.12+Math.random()*.08,
+      attack:.24+Math.random()*.14,
+      age:Math.random()*4,
+      active:false,
+      history:[]
+    });
   }
-  ctx.stroke();
-  document.getElementById('decayRate').textContent='ERR';
-  document.getElementById('energyLoss').textContent='ERR';
-  return;
- }
- const current=clamp(sev()*.88 + (micActive?micSignal*.72:0),0,1);
- const change=current-sdrPrevious;
- sdrPrevious=current;
+}
+initSDRTraces();
 
- // The trace behaves like a field: it rises quickly and decays more slowly.
- const attack=change>0 ? .42 : .10;
- sdrEnergy += (current-sdrEnergy)*attack;
- sdrEnergy=clamp(sdrEnergy,0,1);
+function spawnSDREvent(trace,energy){
+  trace.level=clamp(energy,0,1);
+  trace.target=trace.level;
+  trace.age=0;
+  trace.active=true;
+  trace.decay=.07+Math.random()*.11;
+  trace.attack=.28+Math.random()*.18;
+  sdrEventCount++;
+}
 
- sdrHistory.push(sdrEnergy);
- if(sdrHistory.length>180)sdrHistory.shift();
+function updateSDRTraces(dt){
+  const field=clamp(sev()*.9+(micActive?micSignal*.65:0),0,1);
+  sdrTraceClock+=dt;
 
- let decayRate=Math.max(.05,Math.abs(change)*9 + (current<sdrEnergy?.08:0));
- let loss=clamp((1-sdrEnergy)*100,0,100);
- document.getElementById('decayRate').textContent=decayRate.toFixed(2);
- document.getElementById('energyLoss').textContent=loss.toFixed(1)+'%';
+  // The analyser watches for discrete spectral events rather than drawing one generic curve.
+  if(field>.035 && sdrTraceClock>0.18){
+    const chance=.10+field*.22;
+    if(Math.random()<chance){
+      const available=sdrTraces.filter(tr=>!tr.active || tr.level<.08);
+      const tr=available.length?available[Math.floor(Math.random()*available.length)]:sdrTraces[Math.floor(Math.random()*sdrTraces.length)];
+      spawnSDREvent(tr,clamp(.16+field*.78+Math.random()*.16,0,1));
+      sdrTraceClock=0;
+    }
+  }
 
- const r=canvas.getBoundingClientRect(),w=r.width,h=r.height;
- ctx.clearRect(0,0,w,h);
+  sdrTraces.forEach((tr,i)=>{
+    if(!tr.active){
+      tr.level*=.96;
+    }else{
+      tr.age+=dt;
+      // Fast rise, then a slower natural decay.
+      if(tr.age<.18) tr.level += (tr.target-tr.level)*tr.attack;
+      else tr.level += (0-tr.level)*tr.decay*.055;
+      tr.level=clamp(tr.level,0,1);
+      if(tr.level<.012 && tr.age>1.2) tr.active=false;
+    }
 
- ctx.strokeStyle='rgba(116,255,116,.18)';
- ctx.lineWidth=1;
- for(let i=1;i<4;i++){
-  const y=h*i/4;
-  ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(w,y);ctx.stroke();
- }
- for(let i=1;i<5;i++){
-  const x=w*i/5;
-  ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,h);ctx.stroke();
- }
+    tr.history.push(tr.level);
+    if(tr.history.length>180)tr.history.shift();
+  });
 
- ctx.strokeStyle='#74ff74';
- ctx.lineWidth=2;
- ctx.beginPath();
+  sdrPrevious=field;
+  sdrEnergy=sdrTraces.reduce((a,tr)=>a+tr.level,0)/sdrTraces.length;
+}
 
- const n=sdrHistory.length;
- for(let i=0;i<n;i++){
-  const x=n<=1 ? 0 : i/(n-1)*w;
-  const live=sdrHistory[i];
-  const ripple=(Math.sin(i*.31+t*2.2)*.018 + Math.sin(i*.071+t*1.3)*.012) * (0.25+live);
-  const y=(1-clamp(live+ripple,0,1))*(h-4)+2;
-  if(i===0)ctx.moveTo(x,y);else ctx.lineTo(x,y);
- }
- if(n)ctx.stroke();
+function drawSDR(){
+  const r=canvas.getBoundingClientRect(),w=r.width,h=r.height;
+  ctx.clearRect(0,0,w,h);
 
- // A brighter leading point shows the current field energy.
- if(n){
-  const x=w;
-  const y=(1-clamp(sdrHistory[n-1],0,1))*(h-4)+2;
-  ctx.fillStyle='#74ff74';
-  ctx.beginPath();ctx.arc(x,y,3,0,Math.PI*2);ctx.fill();
- }
+  // Technical analyser grid.
+  ctx.strokeStyle='rgba(116,255,116,.14)';
+  ctx.lineWidth=1;
+  for(let i=1;i<4;i++){
+    const y=h*i/4;ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(w,y);ctx.stroke();
+  }
+  for(let i=1;i<5;i++){
+    const x=w*i/5;ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,h);ctx.stroke();
+  }
+
+  if(aweActive){
+    // AWE breaks the expected decay model: traces can rise, reverse, split and disappear.
+    for(let tr=0;tr<sdrTraces.length;tr++){
+      ctx.strokeStyle=aweColour();ctx.lineWidth=tr===0?2:1.5;ctx.beginPath();
+      for(let i=0;i<=180;i++){
+        const x=i/180*w;
+        const base=.28+tr*.14;
+        const y=h*(base + Math.sin(i*.16+t*(2.4+tr*.35)+tr)*.18 + Math.sin(i*.47-t*1.7)*.12 + (Math.random()-.5)*.18);
+        if(i===0)ctx.moveTo(x,y);else ctx.lineTo(x,y);
+      }
+      ctx.stroke();
+    }
+    document.getElementById('decayRate').textContent='ERR';
+    document.getElementById('energyLoss').textContent='ERR';
+    return;
+  }
+
+  updateSDRTraces(.06);
+
+  const activeTraces=sdrTraces.filter(tr=>tr.active || tr.history.some(v=>v>.015));
+  let totalDecay=0,decaySamples=0;
+
+  sdrTraces.forEach((tr,ti)=>{
+    const n=tr.history.length;
+    if(n<2)return;
+    ctx.strokeStyle='#74ff74';
+    ctx.globalAlpha=.28+ti*.11;
+    ctx.lineWidth=ti===0?2:1.25;
+    ctx.beginPath();
+    for(let i=0;i<n;i++){
+      const x=n<=1?0:i/(n-1)*w;
+      const v=tr.history[i];
+      const ripple=(Math.sin(i*.27+tr.phase+t*1.7)*.012)*(0.25+v);
+      const y=(1-clamp(v+ripple,0,1))*(h-4)+2;
+      if(i===0)ctx.moveTo(x,y);else ctx.lineTo(x,y);
+    }
+    ctx.stroke();
+    ctx.globalAlpha=1;
+
+    if(tr.active && tr.age>.22){
+      const x=w;
+      const y=(1-clamp(tr.level,0,1))*(h-4)+2;
+      ctx.fillStyle='#74ff74';ctx.beginPath();ctx.arc(x,y,2.5,0,Math.PI*2);ctx.fill();
+    }
+
+    if(tr.history.length>10){
+      const recent=tr.history[tr.history.length-1];
+      const older=tr.history[Math.max(0,tr.history.length-8)];
+      if(recent<older){totalDecay+=older-recent;decaySamples++;}
+    }
+  });
+
+  const decayRate=decaySamples?clamp(totalDecay/decaySamples*8,.02,9.99):.02;
+  const loss=clamp((1-sdrEnergy)*100,0,100);
+  document.getElementById('decayRate').textContent=decayRate.toFixed(2);
+  document.getElementById('energyLoss').textContent=loss.toFixed(1)+'%';
 }
 
 function triggerAWE(){
