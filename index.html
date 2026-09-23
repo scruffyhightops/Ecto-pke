@@ -253,9 +253,21 @@ function drawSPD(){
 }
 function drawSPV(){
  if(aweActive){
-  document.querySelectorAll('#vectorArea .square').forEach(function(sq){
+  // AWE breaks the normal vector model: every node moves independently
+  // through the whole field rather than inheriting the normal clustered path.
+  document.querySelectorAll('#vectorArea .square').forEach(function(sq,i){
+   const p=i*.91;
+   const x=50 + Math.sin(t*(1.05+(i%3)*.17)+p)*35 + Math.sin(t*2.37+p*1.7)*11;
+   const y=50 + Math.cos(t*(.82+(i%4)*.13)+p*1.31)*32 + Math.sin(t*2.83+p)*12;
+   const size=0.65 + (Math.sin(t*3.1+p*2.2)+1)*.42;
+   const opacity=.45 + (Math.sin(t*2.1+p)+1)*.25;
+   sq.style.left=Math.max(6,Math.min(94,x))+'%';
+   sq.style.top=Math.max(8,Math.min(92,y))+'%';
+   sq.style.width=(9+size*9)+'px';
+   sq.style.height=(9+size*9)+'px';
+   sq.style.opacity=opacity.toFixed(2);
    sq.style.background=aweColour(); sq.style.borderColor=aweColour();
-   sq.style.transform='translate('+(Math.random()*18-9)+'px,'+(Math.random()*18-9)+'px) scale('+(0.75+Math.random()*.7)+')';
+   sq.style.transform='translate(-50%,-50%) rotate('+(Math.sin(t*1.7+p)*45)+'deg) scale('+size.toFixed(2)+')';
   });
   return;
  }
