@@ -206,6 +206,7 @@ function selectMode(m){
  });
  modeButtons.forEach(b=>b.classList.toggle('active',b.dataset.mode===m));
  titleEl.textContent=m==='SPD'?'SPECTRAL PARTICLE DENSITY':m==='SPV'?'SPECTRAL VELOCITY':'SPECTRAL DECAY RATE';
+ if(m==='SDR')setTimeout(resizeCanvas,0);
  drawAll();
 }
 function renderStatus(){
@@ -329,7 +330,11 @@ function updateSDRTraces(dt){
 }
 
 function drawSDR(){
-  const r=canvas.getBoundingClientRect(),w=r.width,h=r.height;
+  const r=canvas.getBoundingClientRect();
+  if(r.width<2 || r.height<2)return;
+  const d=devicePixelRatio||1;
+  if(canvas.width !== Math.max(1,Math.round(r.width*d)) || canvas.height !== Math.max(1,Math.round(r.height*d))) resizeCanvas();
+  const rr=canvas.getBoundingClientRect(),w=rr.width,h=rr.height;
   ctx.clearRect(0,0,w,h);
 
   // Technical analyser grid.
