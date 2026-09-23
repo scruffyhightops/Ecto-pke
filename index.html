@@ -99,7 +99,7 @@ button.active{background:#182018}
   <div class="spdFooter">
    <div class="metric">DENSITY<b id="spdDensity">0.0</b></div>
    <div class="metric">VARIANCE<b id="spdVariance">0.0</b></div>
-   <div class="metric classMetric"><b id="spdClass">—</b></div>
+   <div class="metric classMetric">CLASS<b id="spdClass">—</b></div>
   </div>
  </section>
 
@@ -243,11 +243,17 @@ function drawSPD(){
  });
  document.getElementById('spdDensity').textContent=(s*100).toFixed(1);
  document.getElementById('spdVariance').textContent=(s*(10+Math.sin(t)*2)).toFixed(1);
- document.getElementById('spdClass').textContent=aweActive?'ERROR':(value<500?'VII':value<1333.5?'VI':value<1555?'V':value<1984?'III–IV':'I–II');
+ document.getElementById('spdClass').textContent=aweActive?'ERROR':
+  value>=5000?'NO PKE':
+  value>=3000?'PKE DETECTED':
+  value>=1984?'I–II':
+  value>=1555?'III–IV':
+  value>=1333.5?'V':
+  value>=500?'VI':'VII';
 }
 function drawSPV(){
  if(aweActive){
-  document.querySelectorAll('#vectorArea .signalSquare').forEach(function(sq){
+  document.querySelectorAll('#vectorArea .square').forEach(function(sq){
    sq.style.background=aweColour(); sq.style.borderColor=aweColour();
    sq.style.transform='translate('+(Math.random()*18-9)+'px,'+(Math.random()*18-9)+'px) scale('+(0.75+Math.random()*.7)+')';
   });
@@ -257,7 +263,7 @@ function drawSPV(){
  const speed=s*10;
  document.getElementById('spvVelocity').textContent=speed.toFixed(1);document.getElementById('spvDirection').textContent=String(Math.round(dir)).padStart(3,'0')+'°';
  const squares=document.querySelectorAll('.square'),spread=7*(.55+s);
- squares.forEach((q,i)=>{const d=(i-4)*spread;q.style.left=50+dx*d+'%';q.style.top=50+dy*d+'%';q.style.width=(8+s*10)+'px';q.style.height=(8+s*10)+'px';q.style.opacity=clamp(.3+s*.7-i*.025,.08,1)})
+ squares.forEach((q,i)=>{const d=(i-4)*spread;q.style.left=50+dx*d+'%';q.style.top=50+dy*d+'%';q.style.width=(8+s*10)+'px';q.style.height=(8+s*10)+'px';q.style.opacity=clamp(.3+s*.7-i*.025,.08,1);q.style.background='currentColor';q.style.borderColor='transparent'})
 }
 function drawSDR(){
  if(aweActive){
