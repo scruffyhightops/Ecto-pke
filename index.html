@@ -84,7 +84,7 @@ button.active{background:#182018}
 </head>
 <body>
 <main id="app">
-<header class="header"><span class="title">PKE FIELD ANALYSER / V28</span><span id="status" class="status">STANDBY</span></header>
+<header class="header"><span class="title">PKE FIELD ANALYSER / V26</span><span id="status" class="status">STANDBY</span></header>
 
 <section class="readout">
  <div id="modeTitle" class="modeTitle">SYSTEM OFFLINE</div>
@@ -149,9 +149,6 @@ const environmentBtn=document.getElementById('environment');
 let active=false,auto=false,hold=false,mode='SPD',value=7600,t=0,frame=0;
 const spdHeights={barsA:Array(16).fill(0.08),barsB:Array(16).fill(0.08)};
 let audioCtx=null,lastValue=value,lastSound=0,sdrEnergy=0,sdrPrevious=0,sdrHistory=[],sdrTraces=[],sdrTraceClock=0,sdrEventCount=0,aweActive=false,aweUntil=0,aweNext=0;
-// EXPERIMENTAL: shared spectral event engine. It is deliberately isolated from UI controls.
-let spectralEvent={state:'QUIET',age:0,duration:0,density:0,velocity:0,direction:0,decay:0,stability:1,resonance:0,pulse:0,drift:0};
-let spectralNextEvent=0;
 let micStream=null,micSource=null,analyser=null,micData=null,micActive=false,micLevel=0,micPeak=0,micCentroid=0,micNoiseFloor=0,micSignal=0,micCalibrating=false,micCalibrationUntil=0;
 
 function clamp(v,a,b){return Math.max(a,Math.min(b,v))}
@@ -223,7 +220,7 @@ function renderStatus(){
 function makeBars(id){const el=document.getElementById(id);for(let i=0;i<16;i++){const b=document.createElement('div');b.className='bar';el.appendChild(b)}}
 makeBars('barsA');makeBars('barsB');
 for(let i=0;i<121;i++){const c=document.createElement('div');c.className='cell';document.getElementById('vectorGrid').appendChild(c)}
-for(let i=0;i<12;i++){const s=document.createElement('div');s.className='square';document.getElementById('vectorArea').appendChild(s)}
+for(let i=0;i<9;i++){const s=document.createElement('div');s.className='square';document.getElementById('vectorArea').appendChild(s)}
 
 const canvas=document.getElementById('decayCanvas'),ctx=canvas.getContext('2d');
 function resizeCanvas(){const r=canvas.getBoundingClientRect(),d=devicePixelRatio||1;canvas.width=Math.max(1,r.width*d);canvas.height=Math.max(1,r.height*d);ctx.setTransform(d,0,0,d,0,0)}
@@ -283,32 +280,11 @@ function drawSPV(){
   });
   return;
  }
- const s=sev();
- // Normal SPV is a moving vector stream: nodes travel through a shared
- // direction, but each node follows a slightly different curved path.
- const angle=t*(.34+.42*s)+Math.sin(t*.17)*(.22+.35*s);
- const dx=Math.cos(angle),dy=Math.sin(angle),perpX=-dy,perpY=dx;
- const dir=(Math.atan2(dy,dx)*180/Math.PI+360)%360;
- const speed=clamp(1.8+s*10,1.8,11.8);
- document.getElementById('spvVelocity').textContent=speed.toFixed(1);
- document.getElementById('spvDirection').textContent=String(Math.round(dir)).padStart(3,'0')+'°';
- const squares=document.querySelectorAll('.square');
- squares.forEach((q,i)=>{
-   const u=i/(squares.length-1)-.5;
-   const phase=t*(.75+.85*s)+i*.48;
-   const travel=Math.sin(phase)*(.12+.18*s)+u*(12+22*s);
-   const lateral=Math.sin(phase*1.27+i*.73)*(2.5+10*s);
-   const x=50+dx*travel*2.15+perpX*lateral;
-   const y=50+dy*travel*1.65+perpY*lateral;
-   const size=7+s*7+Math.sin(phase*1.4+i)*1.4;
-   const opacity=clamp(.18+s*.72+Math.sin(phase+i)*.12-Math.abs(u)*.16,.10,1);
-   q.style.left=clamp(x,5,95)+'%';
-   q.style.top=clamp(y,8,92)+'%';
-   q.style.width=Math.max(5,size)+'px';q.style.height=Math.max(5,size)+'px';
-   q.style.opacity=opacity.toFixed(2);
-   q.style.background='currentColor';q.style.borderColor='transparent';
-   q.style.transform='translate(-50%,-50%) rotate('+(angle*57.2958+Math.sin(phase)*18).toFixed(1)+'deg)';
- });
+ const s=sev(),dx=Math.cos(t*.42+s*1.7),dy=Math.sin(t*.31+s*2.3),dir=(Math.atan2(dy,dx)*180/Math.PI+360)%360;
+ const speed=s*10;
+ document.getElementById('spvVelocity').textContent=speed.toFixed(1);document.getElementById('spvDirection').textContent=String(Math.round(dir)).padStart(3,'0')+'°';
+ const squares=document.querySelectorAll('.square'),spread=7*(.55+s);
+ squares.forEach((q,i)=>{const d=(i-4)*spread;q.style.left=50+dx*d+'%';q.style.top=50+dy*d+'%';q.style.width=(8+s*10)+'px';q.style.height=(8+s*10)+'px';q.style.opacity=clamp(.3+s*.7-i*.025,.08,1);q.style.background='currentColor';q.style.borderColor='transparent'})
 }
 function initSDRTraces(){
   sdrTraces=[];
@@ -474,59 +450,6 @@ function drawSDR(){
   const loss=clamp((1-sdrEnergy)*100,0,100);
   document.getElementById('decayRate').textContent=decayRate.toFixed(2);
   document.getElementById('energyLoss').textContent=loss.toFixed(1)+'%';
-}
-
-// EXPERIMENTAL SPECTRAL EVENT ENGINE
-// The engine is read-only with respect to activation, mode, AUTO/HOLD and Field Input.
-function newSpectralEvent(now){
-  const e=spectralEvent;
-  e.state='EMERGENCE'; e.age=0;
-  e.duration=3.8+Math.random()*5.8;
-  e.density=.18+Math.random()*.72;
-  e.velocity=.12+Math.random()*.82;
-  e.direction=Math.random()*Math.PI*2;
-  e.decay=.18+Math.random()*.72;
-  e.stability=.45+Math.random()*.55;
-  e.resonance=Math.random();
-  e.pulse=Math.random();
-  e.drift=(Math.random()-.5)*.35;
-  spectralNextEvent=now+e.duration+2.5+Math.random()*5;
-}
-function updateSpectralEvent(dt,now){
-  if(!active || hold){return;}
-  const e=spectralEvent;
-  e.age+=dt;
-  const p=clamp(e.age/e.duration,0,1);
-  if(e.age<.75){
-    e.state='EMERGENCE';
-  }else if(p<.38){
-    e.state='RISING';
-  }else if(p<.60){
-    e.state='PEAK';
-  }else if(p<.86){
-    e.state='COLLAPSE';
-  }else{
-    e.state='DECAY';
-  }
-  const rise=clamp(e.age/.95,0,1);
-  const fall=clamp((e.duration-e.age)/(e.duration*.46),0,1);
-  const envelope=clamp(Math.min(rise,1)*Math.max(fall,.08),0,1);
-  const pulse=.5+.5*Math.sin(e.age*(5.5+e.resonance*8)+e.resonance*7);
-  e.pulse=pulse;
-  e.density=clamp((.16+e.density*.84)*envelope + pulse*e.resonance*.10,0,1);
-  e.velocity=clamp((.12+e.velocity*.88)*(0.55+envelope*.7)+Math.sin(e.age*2.1)*.08,0,1);
-  e.direction+=e.drift*dt + Math.sin(e.age*1.3+e.resonance*4)*.015*dt;
-  e.decay=clamp(e.decay*(.997-dt*.035)+(.5-envelope)*.018,0,1);
-  e.stability=clamp(.35+e.stability*.65 - (1-envelope)*.18 + Math.sin(e.age*2.7)*.03,0,1);
-  if(e.age>=e.duration){
-    e.state='RESIDUAL';
-    e.density*=.82; e.velocity*=.9; e.decay=clamp(e.decay+.012,0,1);
-    if(now>=spectralNextEvent){newSpectralEvent(now);}
-  }
-}
-function spectralExcitation(){
-  const e=spectralEvent;
-  return clamp(e.density*.72 + e.velocity*.12 + e.pulse*e.resonance*.08,0,1);
 }
 
 function triggerAWE(){
@@ -697,13 +620,12 @@ document.addEventListener('pointercancel', function(event){
 
 function tick(){
  const now=performance.now(); updateAWE(now);
- updateSpectralEvent(.06,now);
  if(active&&!hold){
   if(micActive){
    readMicrophone();
    if(auto){
     // Ambient sound excites the field, but the scan always retains a recovery path.
-    const excitation=clamp(micSignal*.72 + spectralExcitation()*.28,0,1);
+    const excitation=micSignal;
     const target=7600-excitation*7600;
     const drift=(target-value)*.19;
     const recovery=value<650 ? Math.min(95, (650-value)*.055) : 0;
@@ -714,16 +636,14 @@ function tick(){
    const s=sev();
    const baseline=6800;
    const recovery=value<1200 ? Math.min(85,(1200-value)*.045) : (value>8200 ? -35 : 0);
-   const eventPull=(spectralExcitation()-s)*720;
-   const wandering=(Math.random()-.5)*520 + Math.sin(spectralEvent.age*2.2)*180;
-   const downward=-s*120;
+   const wandering=(Math.random()-.5)*900;
+   const downward=-s*170;
    const meanPull=(baseline-value)*.012;
-   value=clamp(value+wandering+eventPull+downward+meanPull+recovery,0,10000);
+   value=clamp(value+wandering+downward+meanPull+recovery,0,10000);
   }
  }
  t+=.035;frame++;scanTone();drawAll();
 }
-spectralNextEvent=performance.now()+1800;
 setInterval(tick,60);
 drawAll();
 if('serviceWorker' in navigator)navigator.serviceWorker.register('./sw.js').catch(()=>{});
