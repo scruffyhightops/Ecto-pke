@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
 <meta name="theme-color" content="#070907">
 <link rel="manifest" href="manifest.json">
-<title>PKE Field Analyser v18 — Spectral Decay Trace Analyser</title>
+<title>PKE Field Analyser v19 — Spectral Decay Trace Analyser</title>
 <style>
 :root{
  --green:#74ff74;--yellow:#ffe45a;--red:#ff5147;--text:#d9e8d9;
@@ -84,7 +84,7 @@ button.active{background:#182018}
 </head>
 <body>
 <main id="app">
-<header class="header"><span class="title">PKE FIELD ANALYSER / V18</span><span id="status" class="status">STANDBY</span></header>
+<header class="header"><span class="title">PKE FIELD ANALYSER / V19</span><span id="status" class="status">STANDBY</span></header>
 
 <section class="readout">
  <div id="modeTitle" class="modeTitle">SYSTEM OFFLINE</div>
@@ -94,8 +94,7 @@ button.active{background:#182018}
 
 <section class="analysis" id="analysis">
  <!-- SPD SCREEN -->
- <section class="view spd active" id="spdView"><div style="position:absolute;right:8px;top:5px;font:9px var(--tech);letter-spacing:1px">MODE 01 / SPD</div>
-  <div class="spdPanel"><span class="panelLabel">PARTICLE DENSITY / FIELD A</span><div class="barSet" id="barsA"></div></div>
+ <section class="view spd active" id="spdView">  <div class="spdPanel"><span class="panelLabel">PARTICLE DENSITY / FIELD A</span><div class="barSet" id="barsA"></div></div>
   <div class="spdPanel"><span class="panelLabel">PARTICLE DENSITY / FIELD B</span><div class="barSet" id="barsB"></div></div>
   <div class="spdFooter">
    <div class="metric">DENSITY<b id="spdDensity">0.0</b></div>
@@ -105,8 +104,7 @@ button.active{background:#182018}
  </section>
 
  <!-- SPV SCREEN -->
- <section class="view spv" id="spvView"><div style="position:absolute;right:8px;top:5px;font:9px var(--tech);letter-spacing:1px">MODE 02 / SPV</div>
-  <div class="vectorArea" id="vectorArea"><span class="panelLabel nodeLabel">NODE / VECTOR FIELD</span>
+ <section class="view spv" id="spvView">  <div class="vectorArea" id="vectorArea"><span class="panelLabel nodeLabel">NODE / VECTOR FIELD</span>
    <div class="vectorGrid" id="vectorGrid"></div>
   </div>
   <div class="spvFooter">
@@ -116,8 +114,7 @@ button.active{background:#182018}
  </section>
 
  <!-- SDR SCREEN -->
- <section class="view sdr" id="sdrView"><div style="position:absolute;right:8px;top:5px;font:9px var(--tech);letter-spacing:1px">MODE 03 / SDR</div>
-  <div class="curvePanel">
+ <section class="view sdr" id="sdrView">  <div class="curvePanel">
    <div class="sdrLegend">LIVE / TRACE HISTORY</div>
    <div class="axisY">SPECTRAL ENERGY</div>
    <div class="axisX">TIME / SECONDS</div>
@@ -271,14 +268,17 @@ function initSDRTraces(){
   sdrTraces=[];
   for(let i=0;i<4;i++){
     sdrTraces.push({
-      level:0,
-      target:0,
+      level:.08+Math.random()*.10,
+      target:.18+Math.random()*.18,
       phase:Math.random()*Math.PI*2,
-      decay:.12+Math.random()*.08,
-      attack:.24+Math.random()*.14,
-      age:Math.random()*4,
+      decay:.07+Math.random()*.05,
+      attack:.22+Math.random()*.12,
+      age:Math.random()*2,
       active:false,
-      history:Array.from({length:180},()=>0.018+Math.random()*.012)
+      history:Array.from({length:180},(_,j)=>{
+        const x=j/179;
+        return .025 + Math.exp(-x*(1.4+i*.16))*(.07+i*.018) + Math.sin(x*12+i)*.008;
+      })
     });
   }
 }
@@ -298,29 +298,26 @@ function updateSDRTraces(dt){
   const field=clamp(sev()*.9+(micActive?micSignal*.65:0),0,1);
   sdrTraceClock+=dt;
 
-  // The analyser always has a low-level spectral baseline. Higher PKE values
-  // increase the frequency and amplitude of discrete decay events.
-  const eventInterval=.42-field*.25;
-  if(sdrTraceClock>eventInterval){
-    const chance=.72+field*.25;
-    if(Math.random()<chance){
-      const available=sdrTraces.filter(tr=>!tr.active || tr.level<.08);
-      const tr=available.length?available[Math.floor(Math.random()*available.length)]:sdrTraces[Math.floor(Math.random()*sdrTraces.length)];
-      spawnSDREvent(tr,clamp(.045+field*.78+Math.random()*.16,0,1));
-      sdrTraceClock=0;
-    }
+  // SDR always generates a visible stream of spectral events. PKE level changes
+  // their amplitude and frequency, while each event still follows its own decay.
+  const eventInterval=Math.max(.24,.72-field*.40);
+  if(sdrTraceClock>=eventInterval){
+    const available=sdrTraces.filter(tr=>!tr.active || tr.level<.10);
+    const tr=available.length?available[Math.floor(Math.random()*available.length)]:sdrTraces[Math.floor(Math.random()*sdrTraces.length)];
+    spawnSDREvent(tr,clamp(.10+field*.70+Math.random()*.14,0,1));
+    sdrTraceClock=0;
   }
 
   sdrTraces.forEach((tr,i)=>{
     if(!tr.active){
-      tr.level*=.96;
+      // Maintain a very small live baseline instead of dropping to zero.
+      tr.level=Math.max(.018,tr.level*.985);
     }else{
       tr.age+=dt;
-      // Fast rise, then a slower natural decay.
       if(tr.age<.18) tr.level += (tr.target-tr.level)*tr.attack;
       else tr.level += (0-tr.level)*tr.decay*.055;
       tr.level=clamp(tr.level,0,1);
-      if(tr.level<.012 && tr.age>1.2) tr.active=false;
+      if(tr.level<.018 && tr.age>1.5) tr.active=false;
     }
 
     tr.history.push(tr.level);
@@ -363,31 +360,28 @@ function drawSDR(){
   }
 
   updateSDRTraces(.06);
-
-  const activeTraces=sdrTraces.filter(tr=>tr.active || tr.history.some(v=>v>.015));
   let totalDecay=0,decaySamples=0;
 
   sdrTraces.forEach((tr,ti)=>{
     const n=tr.history.length;
     if(n<2)return;
     ctx.strokeStyle='#74ff74';
-    ctx.globalAlpha=.28+ti*.11;
-    ctx.lineWidth=ti===0?2:1.25;
+    ctx.globalAlpha=.58+ti*.08;
+    ctx.lineWidth=ti===0?2:1.4;
     ctx.beginPath();
     for(let i=0;i<n;i++){
-      const x=n<=1?0:i/(n-1)*w;
+      const x=i/(n-1)*w;
       const v=tr.history[i];
-      const ripple=(Math.sin(i*.27+tr.phase+t*1.7)*.012)*(0.25+v);
+      const ripple=(Math.sin(i*.27+tr.phase+t*1.7)*.012)*(0.35+v);
       const y=(1-clamp(v+ripple,0,1))*(h-4)+2;
       if(i===0)ctx.moveTo(x,y);else ctx.lineTo(x,y);
     }
     ctx.stroke();
     ctx.globalAlpha=1;
 
-    if(tr.active && tr.age>.22){
-      const x=w;
+    if(tr.active){
       const y=(1-clamp(tr.level,0,1))*(h-4)+2;
-      ctx.fillStyle='#74ff74';ctx.beginPath();ctx.arc(x,y,2.5,0,Math.PI*2);ctx.fill();
+      ctx.fillStyle='#74ff74';ctx.beginPath();ctx.arc(w-1,y,2.8,0,Math.PI*2);ctx.fill();
     }
 
     if(tr.history.length>10){
